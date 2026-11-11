@@ -64,7 +64,7 @@ class AppTheme {
     final base = ThemeData(
       brightness: Brightness.light,
       useMaterial3: true,
-      fontFamily: 'Roboto',
+      fontFamily: 'Poppins',
     );
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.white,
