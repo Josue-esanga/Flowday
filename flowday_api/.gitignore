@@ -1,0 +1,14 @@
+# Environnement virtuel
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Base de données SQLite
+db.sqlite3
+
+# Django
+*.log
+staticfiles/
