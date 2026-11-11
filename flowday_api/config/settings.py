@@ -11,9 +11,26 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Secrets hors du code : DATABASE_URL vit dans le fichier .env (ignoré par
+# git, modèle dans .env.example). load_dotenv ne remplace pas une variable
+# déjà définie dans l'environnement, utile pour la CI.
+load_dotenv(BASE_DIR / '.env')
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+if not DATABASE_URL:
+    raise ImproperlyConfigured(
+        "DATABASE_URL manquant : copiez flowday_api/.env.example en "
+        "flowday_api/.env puis renseignez l'URL de votre base Supabase."
+    )
 
 
 # Quick-start development settings - unsuitable for production
@@ -41,6 +58,8 @@ INSTALLED_APPS = [
     # API
     'rest_framework',
     'corsheaders',
+    # Documentation OpenAPI / Swagger
+    'drf_spectacular',
     # App métier
     'planning',
 ]
@@ -65,10 +84,29 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': None,
     # Heure lisible côté Flutter : "16:00" (entrée acceptée aussi en "16:00").
     'TIME_FORMAT': '%H:%M',
+    # Schéma OpenAPI généré par drf-spectacular (Swagger UI).
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # CORS : requis pour Flutter Web ; sans effet sur Android/iOS natif.
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Documentation de l'API (drf-spectacular → Swagger UI + Redoc).
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Flowday API',
+    'DESCRIPTION': (
+        'API REST de l\'application mobile Flowday (gestion de tâches '
+        'quotidiennes).\n\n'
+        'Couvre le MVP du cahier des charges : tâches du jour triées par '
+        'heure (F1), sélecteur de semaine (F2), création (F3), modification '
+        '(F4), suppression (F5), termination des tâches (F6), catégories '
+        '(F7) et statistiques du profil (§3.5).\n\n'
+        'Base URL exemple Android : http://10.0.2.2:8000/api'
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': r'/api',
+}
 
 ROOT_URLCONF = 'config.urls'
 
@@ -93,11 +131,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.parse(
+        DATABASE_URL,
+        # Le pooler Supabase ferme les connexions inactives : on les garde
+        # en vie et on vérifie leur état avant chaque usage.
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 

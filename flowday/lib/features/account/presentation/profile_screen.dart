@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/providers/tasks_provider.dart';
 
-/// Profil (README §3.5) : informations utilisateur et statistiques.
-/// Écran minimal pour le MVP — design statique, style clair.
+/// Profil (README §3.5) : informations utilisateur et statistiques
+/// chargées depuis l'API (`GET /api/stats/`).
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -59,21 +61,73 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 28),
 
-        // Statistiques de productivité.
-        Row(
-          children: const [
-            Expanded(
-              child: _StatCard(value: '12', label: 'Tâches terminées'),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(value: '85%', label: 'Taux de réussite'),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(value: '30', label: 'Cette semaine'),
-            ),
-          ],
+        // Statistiques de productivité (API).
+        Consumer<TasksProvider>(
+          builder: (context, state, _) {
+            final stats = state.stats;
+            if (stats == null && state.loading) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (stats == null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_outlined,
+                      size: 36,
+                      color: AppColors.muted,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.error ?? 'Statistiques indisponibles.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: state.retry,
+                      child: const Text(
+                        'Réessayer',
+                        style: TextStyle(color: AppColors.dark),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            final rate = stats.successRate;
+            final rateLabel = rate == rate.roundToDouble()
+                ? '${rate.round()}%'
+                : '${rate.toStringAsFixed(1)}%';
+            return Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    value: '${stats.completedTasks}',
+                    label: 'Tâches terminées',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(value: rateLabel, label: 'Taux de réussite'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    value: '${stats.tasksThisWeek}',
+                    label: 'Cette semaine',
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 24),
 

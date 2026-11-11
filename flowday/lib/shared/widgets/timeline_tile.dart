@@ -17,6 +17,7 @@ class TimelineTask extends StatelessWidget {
     this.featured = false,
     this.isLast = false,
     this.onTap,
+    this.onToggle,
   });
 
   final String title;
@@ -27,6 +28,9 @@ class TimelineTask extends StatelessWidget {
   final bool featured;
   final bool isLast;
   final VoidCallback? onTap;
+
+  /// F6 : appuyer sur le point (ou le bouton check) inverse l'état.
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -41,16 +45,25 @@ class TimelineTask extends StatelessWidget {
             width: 35,
             child: Column(
               children: [
-                Container(
-                  width: 17,
-                  height: 17,
-                  margin: const EdgeInsets.only(top: 5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: (featured || completed)
-                        ? AppColors.dark
-                        : Colors.white,
-                    border: Border.all(color: AppColors.dark, width: 2),
+                // F6 : le point de la timeline inverse l'état de la tâche.
+                GestureDetector(
+                  onTap: onToggle,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 17,
+                      height: 17,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: (featured || completed)
+                            ? AppColors.dark
+                            : Colors.white,
+                        border: Border.all(color: AppColors.dark, width: 2),
+                      ),
+                    ),
                   ),
                 ),
                 if (!isLast)
@@ -137,18 +150,22 @@ class TimelineTask extends StatelessWidget {
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          // Action « terminée » (la logique viendra ensuite).
-                          Container(
-                            width: 43,
-                            height: 43,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.check,
-                              color: AppColors.dark,
-                              size: 25,
+                          // F6 : action « terminée ».
+                          GestureDetector(
+                            onTap: onToggle,
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              width: 43,
+                              height: 43,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                color: AppColors.dark,
+                                size: 25,
+                              ),
                             ),
                           ),
                           const Spacer(),

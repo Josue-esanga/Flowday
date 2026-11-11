@@ -106,6 +106,51 @@ class TaskCrudTests(APITestCase):
         )
         self.assertEqual(len(response.data), 3)
 
+    def test_filtre_par_categorie(self):
+        """F7 : ?category= ne retourne que la catégorie demandée."""
+        Task.objects.create(
+            title="Work task",
+            date=date(2026, 6, 28),
+            time=time(9, 0),
+            category=self.work,
+        )
+        health = Category.objects.get(id="health")
+        Task.objects.create(
+            title="Health task",
+            date=date(2026, 6, 28),
+            time=time(10, 0),
+            category=health,
+        )
+        response = self.client.get("/api/tasks/?category=work")
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Work task")
+
+    def test_filtre_date_et_categorie(self):
+        """Le filtre catégorie se combine avec le filtre de date."""
+        health = Category.objects.get(id="health")
+        Task.objects.create(
+            title="Work A",
+            date=date(2026, 6, 28),
+            time=time(9, 0),
+            category=self.work,
+        )
+        Task.objects.create(
+            title="Work B",
+            date=date(2026, 6, 29),
+            time=time(9, 0),
+            category=self.work,
+        )
+        Task.objects.create(
+            title="Health A",
+            date=date(2026, 6, 28),
+            time=time(10, 0),
+            category=health,
+        )
+        response = self.client.get(
+            "/api/tasks/?date=2026-06-28&category=work"
+        )
+        self.assertEqual([t["title"] for t in response.data], ["Work A"])
+
     def test_modification_tache(self):
         """F4 : modifier tous les champs d'une tâche existante."""
         task = Task.objects.create(

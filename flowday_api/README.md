@@ -2,11 +2,17 @@
 
 Backend REST de l'application mobile **Flowday**, écrit avec **Django +
 Django REST Framework**. Il se trouve **à côté** du projet Flutter
-(`../flowday`) et expose les endpoints que l'app Flutter consommera.
+(`../flowday`).
+
+> **Depuis la phase 4, l'app Flutter utilise l'accès direct Supabase
+> (PostgREST) et n'a plus besoin de ce serveur** (voir §4). Ce backend reste
+> utile pour l'**admin**, la documentation **Swagger** et ses **tests**.
 
 - Cahier des charges : `../flowday/README.md`
 - Framework : Django 6.1 + DRF 3.18
-- Base de données : SQLite (locale, `db.sqlite3`)
+- Base de données : **Supabase** (Postgres managé en ligne — URL lue dans le
+  fichier local `.env` via `DATABASE_URL`, voir §1 ; l'ancien `db.sqlite3`
+  local n'est plus utilisé)
 - Authentification : aucune pour le MVP (API publique), prévue en phase
   « synchronisation cloud » du README §7
 
@@ -18,6 +24,12 @@ cd flowday_api
 # Créer et activer l'environnement virtuel (première fois)
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+
+# Secrets (première fois) : copier le modèle puis renseigner DATABASE_URL
+cp .env.example .env
+#   → URL de connexion Supabase (Dashboard → Settings → Database → URI,
+#     mot de passe URL-encodé). Le .env est ignoré par git ; sans lui,
+#     Django refuse de démarrer (« DATABASE_URL manquant »).
 
 # Migrations + catégories par défaut (Work, Health, Personal, Education)
 .venv/bin/python manage.py migrate
@@ -41,6 +53,7 @@ Console d'administration (optionnelle) :
 | GET | `/api/categories/` | F7 — catégories + couleur |
 | GET | `/api/tasks/?date=AAAA-MM-JJ` | F1 — tâches d'un jour, triées par heure |
 | GET | `/api/tasks/?start=AAAA-MM-JJ&end=AAAA-MM-JJ` | F2 — tâches d'une semaine |
+| GET | `/api/tasks/?category=<id>` | F7 — tâches d'une catégorie (combinable avec `?date=`) |
 | GET | `/api/tasks/` | toutes les tâches |
 | POST | `/api/tasks/` | F3 — création |
 | GET | `/api/tasks/<uuid>/` | détail |
@@ -48,6 +61,29 @@ Console d'administration (optionnelle) :
 | DELETE | `/api/tasks/<uuid>/` | F5 — suppression |
 | POST | `/api/tasks/<uuid>/toggle/` | F6 — terminer / déterminer |
 | GET | `/api/stats/` | §3.5 — statistiques du profil |
+| GET | `/api/schema/` | schéma OpenAPI 3 (JSON / YAML) |
+| GET | `/api/docs/` | **Swagger UI** (interface interactive) |
+| GET | `/api/redoc/` | Redoc (documentation classique) |
+
+## 2.1 Documentation Swagger
+
+Une fois le serveur lancé, ouvre **http://127.0.0.1:8000/api/docs/** dans
+le navigateur : tu obtiens l'interface **Swagger UI** avec toutes les
+endpoints (filtres, payloads, boutons « Try it out » pour appeler l'API
+directement depuis le navigateur).
+
+- `GET /api/schema/` : le schéma OpenAPI 3 brut (JSON par défaut, YAML si
+  `Accept: application/yaml`) — utile pour générer un client Flutter.
+- `GET /api/redoc/` : la même documentation au style Redoc.
+- La doc est générée automatiquement par `drf-spectacular` à partir des
+  serializers et des annotations `@extend_schema` (paramètres `date`,
+  `start`, `end`, `category`, réponses de `toggle` et `stats`…).
+
+Générer le schéma en fichier (ex. pour un outil de codegen) :
+
+```bash
+.venv/bin/python manage.py spectacular --file schema.yaml
+```
 
 ### Format d'une tâche
 
@@ -107,21 +143,55 @@ curl http://127.0.0.1:8000/api/stats/
 
 ## 4. Consommation depuis Flutter
 
-### URL de base selon la plateforme
+### Depuis la phase 4 : accès direct Supabase (sans ce serveur)
 
-| Cible | URL |
+L'app Flutter (`../flowday`) interroge directement l'API REST **Supabase**
+(PostgREST) : `https://<projet>.supabase.co/rest/v1/…` avec la clé publique
+du projet — configurée dans
+`flowday/lib/core/network/supabase_config.dart` (surcharge possible :
+`--dart-define=FLOWDAY_SUPABASE_URL` / `FLOWDAY_SUPABASE_ANON_KEY`).
+
+| Table | Usage dans l'app |
 |---|---|
-| Émulateur Android | `http://10.0.2.2:8000/api/` |
-| Émulateur iOS / simulateur | `http://127.0.0.1:8000/api/` |
-| Appareil physique | `http://<IP-PC>:8000/api/` (même Wi-Fi) |
-| Flutter Web | `http://127.0.0.1:8000/api/` |
+| `planning_category` | F7 — `GET …/planning_category?select=id,name,color` |
+| `planning_task` | F1–F6 + stats — filtres `date=eq.…`, plage `date=gte.…&date=lte.…`, `category_id=eq.…`, catégorie embarquée `select=…,planning_category(id,name,color)` |
 
-Android 8+ exige le trafic HTTP en clair en dev : ajouter dans
-`android/app/src/main/AndroidManifest.xml` (dans `<application>`):
+Politiques RLS nécessaires (déjà en place sur le projet) :
 
-```xml
-android:usesCleartextTraffic="true"
+```sql
+CREATE POLICY planning_task_anon ON planning_task FOR ALL TO anon
+  USING (true) WITH CHECK (true);
+CREATE POLICY planning_category_anon ON planning_category FOR ALL TO anon
+  USING (true) WITH CHECK (true);
 ```
+
+> Le RLS est activé sur les tables : **sans politique, le rôle `anon` ne
+> voit aucune ligne** (réponses `[]` ou `42501`).
+
+### API Django optionnelle (admin / Swagger / tests)
+
+Consommer directement cette API reste possible ; il faut alors démarrer le
+serveur :
+
+```bash
+# Défaut (localhost) — suffit pour web/émulateur/simulateur/USB avec adb reverse
+.venv/bin/python manage.py runserver
+
+# Accessible depuis le Wi-Fi (autres appareils)
+.venv/bin/python manage.py runserver 0.0.0.0:8000
+```
+
+| Cible | URL utilisée | Condition |
+|---|---|---|
+| **Téléphone physique (USB)** | `http://127.0.0.1:8000/api/` | tunnel USB : `adb reverse tcp:8000 tcp:8000` (une fois par connexion) |
+| Émulateur Android | `http://10.0.2.2:8000/api/` (repli après `127.0.0.1`) | aucun réglage |
+| Émulateur / simulateur iOS | `http://127.0.0.1:8000/api/` | aucun réglage |
+| Appareil sur le même Wi-Fi | `http://<IP-PC>:8000/api/` | serveur en `runserver 0.0.0.0:8000` + `--dart-define=FLOWDAY_API_URL=http://<IP-PC>:8000` |
+| Flutter Web (même machine) | `http://127.0.0.1:8000/api/` | CORS déjà activé |
+
+Android 8+ exige le trafic HTTP en clair en dev : c'est déjà fait dans ce
+projet (`android:usesCleartextTraffic="true"` dans le manifeste, et
+`NSAllowsArbitraryLoads` côté iOS).
 
 ### Exemple avec `package:http`
 
@@ -169,7 +239,7 @@ flowday_api/
 ├── requirements.txt
 ├── README.md                # ce fichier
 ├── config/                  # projet Django (settings, urls)
-│   ├── settings.py          # DRF + CORS activés
+│   ├── settings.py          # DRF + CORS + Swagger (drf-spectacular)
 │   └── urls.py              # /api/ → planning.urls
 └── planning/                # app métier
     ├── models.py            # Category, Task (README §5)

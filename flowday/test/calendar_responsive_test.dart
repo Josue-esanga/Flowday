@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowday/core/providers/tasks_provider.dart';
 import 'package:flowday/features/calendar/presentation/calendar_screen.dart';
+import 'package:flowday/shared/utils/date_utils.dart';
+import 'package:provider/provider.dart';
+
+import 'fakes/fake_task_repository.dart';
+
+void _noop() {}
 
 void main() {
+  final now = DateTime.now();
+  final monthLabel = '${FlowDates.months[now.month - 1]} ${now.year}';
+  final summaryLabel =
+      '${FlowDates.weekdayName(now)}, ${FlowDates.months[now.month - 1]} ${now.day}';
+
   // Vérifie que la page calendrier ne déborde sur aucune taille d'écran.
   const sizes = <String, Size>{
     'petit téléphone (320x568)': Size(320, 568),
@@ -18,26 +30,34 @@ void main() {
       addTearDown(tester.view.reset);
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: CalendarScreen()),
+        ChangeNotifierProvider<TasksProvider>(
+          create: (_) =>
+              TasksProvider(repository: FakeTaskRepository())..loadInitial(),
+          child: const MaterialApp(
+            home: Scaffold(
+              body: CalendarScreen(onOpenTimeline: _noop),
+            ),
+          ),
         ),
       );
+      await tester.pumpAndSettle();
 
       // Aucun débordement (RenderFlex overflow) ni autre exception.
       expect(tester.takeException(), isNull);
 
-      // La grille et le résumé sont bien présents.
+      // La grille (mois réel) et le jour sélectionné sont bien présents.
       expect(find.text('Calendrier'), findsOneWidget);
-      expect(find.text('June 2026'), findsOneWidget);
-      expect(find.text('28'), findsOneWidget);
-      expect(find.text('Friday, June 28'), findsOneWidget);
+      expect(find.text(monthLabel), findsOneWidget);
+      expect(find.text('${now.day}'), findsOneWidget);
 
-      // Défilement jusqu'au résumé du jour.
+      // Défilement jusqu'au résumé du jour (données API).
       await tester.scrollUntilVisible(
-        find.text('Friday, June 28'),
+        find.text(summaryLabel),
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      expect(find.text(summaryLabel), findsOneWidget);
+      expect(find.text('Voir les tâches du jour'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

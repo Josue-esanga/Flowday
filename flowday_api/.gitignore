@@ -12,3 +12,8 @@ db.sqlite3
 # Django
 *.log
 staticfiles/
+
+# Secrets locaux (URL de base, mots de passe) — jamais committés
+.env
+.env.*
+!.env.example

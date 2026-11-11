@@ -4,16 +4,18 @@ import '../features/account/presentation/profile_screen.dart';
 import '../features/calendar/presentation/calendar_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/tasks/presentation/category_tasks_screen.dart';
 import '../features/tasks/presentation/task_form_screen.dart';
 import '../features/tasks/presentation/timeline_screen.dart';
+import '../shared/models/models.dart';
 import '../shared/widgets/bottom_nav_bar.dart';
 import 'theme/app_theme.dart';
 
 /// Coque principale : barre de navigation (4 destinations + bouton +)
 /// et contenu de l'onglet courant.
 ///
-/// L'onglet Accueil alterne entre le tableau de bord (« Hello Mobina! »)
-/// et la timeline « Today's task » (ouverte via « See all »).
+/// L'onglet Accueil alterne entre le tableau de bord (« Hey Mobina ! »)
+/// et la timeline (ouverte via « See all » ou le calendrier).
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -36,9 +38,20 @@ class _HomeShellState extends State<HomeShell> {
 
   void _closeTimeline() => setState(() => _timelineOpen = false);
 
-  void _openTaskForm() {
+  void _openTaskForm([TaskItem? task]) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const TaskFormScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => TaskFormScreen(task: task),
+      ),
+    );
+  }
+
+  /// Ouvre la page « tâches de la catégorie » (flèche des cartes).
+  void _openCategory(Category category) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CategoryTasksScreen(category: category),
+      ),
     );
   }
 
@@ -48,8 +61,12 @@ class _HomeShellState extends State<HomeShell> {
       // Onglet Accueil : dashboard ou timeline.
       _timelineOpen
           ? TimelineScreen(onBack: _closeTimeline)
-          : DashboardScreen(onSeeAll: _openTimeline),
-      const CalendarScreen(),
+          : DashboardScreen(
+              onSeeAll: _openTimeline,
+              onEditTask: _openTaskForm,
+              onOpenCategory: _openCategory,
+            ),
+      CalendarScreen(onOpenTimeline: _openTimeline),
       const SettingsScreen(),
       const ProfileScreen(),
     ];
@@ -60,7 +77,7 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: BottomNavBar(
         selectedIndex: _selectedIndex,
         onSelected: _onTabSelected,
-        onAdd: _openTaskForm,
+        onAdd: () => _openTaskForm(),
       ),
     );
   }
