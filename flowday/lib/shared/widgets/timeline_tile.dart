@@ -1,138 +1,220 @@
 import 'package:flutter/material.dart';
 
-import '../models/models.dart';
 import '../../app/theme/app_theme.dart';
-import 'task_card.dart';
+import '../models/models.dart';
 
-/// Une ligne de la timeline : heure à gauche, point (état de la tâche)
-/// relié par un trait vertical, carte de tâche à droite (README §3.1).
-class TimelineTile extends StatelessWidget {
-  const TimelineTile({
+/// Une ligne de la timeline : point relié par un trait vertical, puis le
+/// contenu de la tâche (heure à droite). La première tâche de la journée
+/// est mise en avant (carte sombre « featured »), comme sur le design.
+class TimelineTask extends StatelessWidget {
+  const TimelineTask({
     super.key,
-    required this.task,
-    this.isFirst = false,
+    required this.title,
+    required this.description,
+    required this.time,
+    this.category,
+    this.completed = false,
+    this.featured = false,
     this.isLast = false,
     this.onTap,
   });
 
-  final TaskItem task;
-  final bool isFirst;
+  final String title;
+  final String description;
+  final String time;
+  final Category? category;
+  final bool completed;
+  final bool featured;
   final bool isLast;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Colonne heure + point + trait de liaison.
-            SizedBox(
-              width: 74,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.timeLabel,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _TimelineMarker(completed: task.completed),
-                  if (!isLast)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Container(
-                          width: 2,
-                          color: AppColors.accent.withValues(alpha: 0.65),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Carte de tâche.
-            Expanded(
-              child: GestureDetector(
-                onTap: onTap,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ----------------------------------------------------------------
+          // Point + trait de liaison
+          // ----------------------------------------------------------------
+          SizedBox(
+            width: 35,
+            child: Column(
+              children: [
+                Container(
+                  width: 17,
+                  height: 17,
+                  margin: const EdgeInsets.only(top: 5),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
+                    shape: BoxShape.circle,
+                    color: (featured || completed)
+                        ? AppColors.dark
+                        : Colors.white,
+                    border: Border.all(color: AppColors.dark, width: 2),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        task.title,
-                        style: TextStyle(
-                          color: task.completed
-                              ? AppColors.textSecondary
-                              : AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          decoration: task.completed
-                              ? TextDecoration.lineThrough
-                              : null,
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: AppColors.dark,
+                      margin: const EdgeInsets.symmetric(vertical: 5),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // ----------------------------------------------------------------
+          // Contenu de la tâche
+          // ----------------------------------------------------------------
+          Expanded(
+            child: GestureDetector(
+              onTap: onTap,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 15),
+                padding: featured
+                    ? const EdgeInsets.all(20)
+                    : const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: featured ? AppColors.dark : Colors.transparent,
+                  borderRadius: BorderRadius.circular(35),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              color: featured ? Colors.white : AppColors.text,
+                              fontSize: featured ? 25 : 22,
+                              fontWeight: FontWeight.bold,
+                              decoration: completed
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
                         ),
-                      ),
-                      if (task.description.isNotEmpty) ...[
-                        const SizedBox(height: 5),
                         Text(
-                          task.description,
+                          time,
                           style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            decoration: task.completed
-                                ? TextDecoration.lineThrough
-                                : null,
+                            color: featured ? Colors.white : AppColors.muted,
+                            fontSize: 14,
                           ),
                         ),
                       ],
-                      const SizedBox(height: 13),
-                      CategoryLabel(category: task.category),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      description,
+                      style: TextStyle(
+                        color: featured
+                            ? Colors.white70
+                            : AppColors.muted,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
+                    ),
+
+                    if (category != null) ...[
+                      const SizedBox(height: 10),
+                      CategoryLabel(
+                        category: category!,
+                        color: featured ? Colors.white70 : null,
+                      ),
                     ],
-                  ),
+
+                    if (featured) ...[
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          // Action « terminée » (la logique viendra ensuite).
+                          Container(
+                            width: 43,
+                            height: 43,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.check,
+                              color: AppColors.dark,
+                              size: 25,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            completed ? 'Terminée' : 'À faire',
+                            style: TextStyle(
+                              color: completed
+                                  ? Colors.white
+                                  : Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Point de la timeline : cochée si la tâche est terminée, sinon cercle
-/// vide. C'est ce point qui inversera l'état à la phase « logique ».
-class _TimelineMarker extends StatelessWidget {
-  const _TimelineMarker({required this.completed});
+/// Pastille de catégorie colorée (point + nom), réutilisée dans les
+/// listes de tâches et la timeline.
+class CategoryLabel extends StatelessWidget {
+  const CategoryLabel({
+    super.key,
+    required this.category,
+    this.fontSize = 13,
+    this.color,
+  });
 
-  final bool completed;
+  final Category category;
+  final double fontSize;
+
+  /// Couleur du texte (défaut : gris secondaire).
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 18,
-      height: 18,
-      decoration: BoxDecoration(
-        color: completed ? AppColors.accent : AppColors.background,
-        shape: BoxShape.circle,
-        border: completed
-            ? null
-            : Border.all(color: AppColors.textSecondary, width: 1.8),
-      ),
-      child: completed
-          ? const Icon(Icons.check, size: 12, color: Colors.white)
-          : null,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: category.color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          category.name,
+          style: TextStyle(
+            color: color ?? AppColors.muted,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

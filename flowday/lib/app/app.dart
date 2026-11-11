@@ -7,7 +7,7 @@ void main() {
   runApp(const FlowdayApp());
 }
 
-/// Application Flowday : thème sombre initial et coque de navigation.
+/// Application Flowday : thème clair et coque de navigation.
 ///
 /// Phase actuelle : design (UI statique sur données de maquette).
 /// La logique métier et le stockage local viendront ensuite.
@@ -19,7 +19,7 @@ class FlowdayApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flowday',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       home: const HomeShell(),
     );
   }

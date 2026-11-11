@@ -4,7 +4,8 @@ import '../../../app/theme/app_theme.dart';
 import '../../../shared/data/mock_data.dart';
 import '../../../shared/models/models.dart';
 
-/// Formulaire de création / modification d'une tâche (README §3.2).
+/// Formulaire de création / modification d'une tâche (README §3.2),
+/// habillé au style clair du nouveau design.
 /// Design uniquement : les boutons ferment l'écran, la validation et
 /// l'enregistrement arriveront avec la logique.
 class TaskFormScreen extends StatefulWidget {
@@ -19,34 +20,33 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.white,
       body: Column(
         children: [
           // En-tête avec retour.
           Padding(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 6,
-            ),
+            padding: EdgeInsets.fromLTRB(8, topPadding + 6, 8, 0),
             child: Row(
               children: [
-                const SizedBox(width: 8),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(
                     Icons.arrow_back_ios_new,
                     size: 20,
-                    color: AppColors.textPrimary,
+                    color: AppColors.dark,
                   ),
                 ),
                 const Expanded(
                   child: Center(
                     child: Text(
-                      "Today's task",
+                      'New task',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -108,8 +108,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: _selectedCategory == category
-                                ? AppColors.accent
-                                : AppColors.surfaceStrong,
+                                ? AppColors.dark
+                                : AppColors.lightCard,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -117,7 +117,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                             style: TextStyle(
                               color: _selectedCategory == category
                                   ? Colors.white
-                                  : AppColors.textSecondary,
+                                  : AppColors.muted,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -130,14 +130,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
                 // Enregistrer.
                 SizedBox(
-                  height: 52,
+                  height: 56,
                   child: FilledButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accent,
+                      backgroundColor: AppColors.dark,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     child: const Text(
@@ -157,9 +157,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
+                      foregroundColor: AppColors.muted,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     child: const Text(
@@ -193,7 +193,7 @@ class _FieldLabel extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: AppColors.textPrimary,
+          color: AppColors.text,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -212,15 +212,21 @@ class _TextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       maxLines: maxLines,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      style: const TextStyle(color: AppColors.text, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        hintStyle: const TextStyle(
+          color: AppColors.placeholderText,
+          fontSize: 14,
+        ),
         filled: true,
-        fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        fillColor: AppColors.field,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide.none,
         ),
       ),
@@ -239,8 +245,8 @@ class _ValueField extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.field,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -248,7 +254,7 @@ class _ValueField extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: AppColors.textPrimary,
+              color: AppColors.text,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -256,7 +262,7 @@ class _ValueField extends StatelessWidget {
           const Icon(
             Icons.keyboard_arrow_down,
             size: 20,
-            color: AppColors.textSecondary,
+            color: AppColors.muted,
           ),
         ],
       ),

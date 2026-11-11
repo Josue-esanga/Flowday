@@ -1,63 +1,85 @@
 import 'package:flutter/material.dart';
 
-/// Charte graphique de Flowday (README §6) — thème sombre.
+/// Charte graphique de Flowday — thème clair (nouveau design).
 ///
-/// Toutes les couleurs de l'application sont centralisées ici pour
-/// garantir la cohérence entre les écrans.
+/// Palette reprise du design de référence : fond bleu-gris très clair,
+/// en-têtes et éléments d'action en gris anthracite, cartes arrondies.
 class AppColors {
   AppColors._();
 
-  /// Fond général : gris très foncé.
-  static const Color background = Color(0xFF0B0B0C);
+  /// Fond général (bleu-gris clair).
+  static const Color bgColor = Color(0xFFE7E9F4);
 
-  /// Cartes et surfaces secondaires : gris anthracite.
-  static const Color surface = Color(0xFF1B1B1D);
+  /// Blanc des écrans et cartes.
+  static const Color white = Colors.white;
 
-  /// Surfaces plus claires (chips, éléments inactifs).
-  static const Color surfaceStrong = Color(0xFF232326);
-
-  /// Barre de navigation inférieure.
-  static const Color navBar = Color(0xFF161618);
-
-  /// Couleur d'accent : orange vif (jour actif, FAB, timeline, badges).
-  static const Color accent = Color(0xFFF4761F);
+  /// En-têtes, boutons et éléments sombres.
+  static const Color dark = Color(0xFF202020);
 
   /// Texte principal.
-  static const Color textPrimary = Color(0xFFF4F4F5);
+  static const Color text = Color(0xFF151515);
 
-  /// Texte secondaire (descriptions, heures, labels inactifs).
-  static const Color textSecondary = Color(0xFF9A9A9E);
+  /// Texte secondaire (dates, descriptions, labels inactifs).
+  static const Color muted = Color(0xFF9295A3);
 
-  /// Bordures et séparateurs discrets.
-  static const Color divider = Color(0xFF2A2A2D);
+  /// Cartes claires (variante claire des cartes de projet).
+  static const Color lightCard = Color(0xFFF0F1FF);
+
+  /// Champs de recherche et de formulaire.
+  static const Color field = Color(0xFFF7F7FA);
+
+  /// Cartes de tâches de la liste.
+  static const Color itemBg = Color(0xFFFAFAFC);
+
+  /// Texte des cartes de tâches.
+  static const Color itemText = Color(0xFF777987);
+
+  /// Barre de navigation inférieure.
+  static const Color navBg = Color(0xFFFAFAFC);
+  static const Color navIconInactive = Color(0xFFC8CAD3);
+  static const Color navBorder = Color(0xFF9CB7C0);
+
+  /// Séparateurs discrets.
+  static const Color divider = Color(0xFFE4E5EF);
+
+  /// Icône grise de la loupe.
+  static const Color placeholderIcon = Color(0xFFB9BBC4);
+  static const Color placeholderText = Color(0xFF9B9DA8);
+
+  /// Couleurs des avatars.
+  static const Color avatarSkin = Color(0xFFD5B5A1);
 
   /// Couleurs des catégories (README §5).
   static const Color work = Color(0xFFF4761F); // orange
   static const Color health = Color(0xFFF5C542); // jaune
   static const Color personal = Color(0xFFF05B52); // rouge
-  static const Color education = Color(0xFF4E8CFF); // bleu (maquette)
+  static const Color education = Color(0xFF4E8CFF); // bleu
 }
 
-/// Thème sombre initial du produit.
+/// Thème clair de l'application.
 class AppTheme {
   AppTheme._();
 
-  static ThemeData dark() {
-    final base = ThemeData.dark(useMaterial3: true);
+  static ThemeData light() {
+    final base = ThemeData(
+      brightness: Brightness.light,
+      useMaterial3: true,
+      fontFamily: 'Roboto',
+    );
     return base.copyWith(
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: AppColors.white,
       colorScheme: base.colorScheme.copyWith(
-        primary: AppColors.accent,
-        secondary: AppColors.accent,
-        surface: AppColors.surface,
-        onSurface: AppColors.textPrimary,
+        primary: AppColors.dark,
+        secondary: AppColors.dark,
+        surface: AppColors.white,
+        onSurface: AppColors.text,
       ),
       textTheme: base.textTheme.apply(
-        bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
+        bodyColor: AppColors.text,
+        displayColor: AppColors.text,
       ),
-      splashColor: AppColors.accent.withValues(alpha: 0.12),
-      highlightColor: AppColors.accent.withValues(alpha: 0.08),
+      splashColor: AppColors.dark.withValues(alpha: 0.06),
+      highlightColor: AppColors.dark.withValues(alpha: 0.04),
     );
   }
 }

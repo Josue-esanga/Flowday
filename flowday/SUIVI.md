@@ -9,41 +9,50 @@ Ce document liste tout ce qui est réalisé dans le projet, étape par étape.
 
 ### Charte graphique appliquée (`lib/app/theme/app_theme.dart`)
 
+**Version actuelle : thème clair** (refonte du design à partir du code de
+référence fourni — deux dashboards, style « project/planning »).
+
 | Élément | Valeur |
 |---|---|
-| Fond général | gris très foncé `#0B0B0C` |
-| Cartes / surfaces | anthracite `#1B1B1D`, `#232326` |
-| Barre de navigation | `#161618` |
-| Couleur d'accent | orange vif `#F4761F` (jour actif, FAB, timeline, badges) |
-| Texte principal / secondaire | `#F4F4F5` / `#9A9A9E` |
+| Fond général | bleu-gris très clair `#E7E9F4` |
+| Écrans / cartes | blanc `#FFFFFF`, cartes de tâches `#FAFAFC` |
+| En-têtes, boutons, éléments d'action | gris anthracite `#202020` |
+| Cartes claires (variante douce) | `#F0F1FF` |
+| Champs (recherche, formulaire) | `#F7F7FA` |
+| Texte principal / secondaire | `#151515` / `#9295A3` |
+| Barre de navigation | `#FAFAFC` (icônes inactives `#C8CAD3`, cerclage du bouton + `#9CB7C0`) |
 | Catégorie **Work** | orange `#F4761F` |
 | Catégorie **Health** | jaune `#F5C542` |
 | Catégorie **Personal** | rouge `#F05B52` |
-| Catégorie **Education** | bleu `#4E8CFF` (issue de la maquette) |
-| Typographie | sans-serif moderne (Inter en recommandation, police système pour l'instant) |
-| Formes | coins arrondis partout (cartes 14 px, chips 20 px) |
+| Catégorie **Education** | bleu `#4E8CFF` |
+| Typographie | Roboto |
+| Formes | très arrondies : cartes 18-38 px, champs 20 px, timeline 35 px |
 
-> Le thème sombre est le thème initial du produit (README §6).
 > Toutes les couleurs sont centralisées dans `AppColors` pour rester cohérentes.
+> Les couleurs de catégories restent celles du README §5 (seules couleurs
+> « vives » du design, utilisées en pastille).
 
-### Écrans réalisés (conformes aux 2 images + README §3)
+### Écrans réalisés (structure du README §3, look du nouveau design)
 
 | Écran | Fichier | Contenu |
 |---|---|---|
-| **Accueil — maquette 2** | `lib/features/dashboard/presentation/dashboard_screen.dart` | Avatar + « Hello Mobina! » + date, champ de recherche + bouton loupe, chips **Categories** (Personal, Work, Health, Education), sections « Today's task » et « Yesterday's task » avec lien **See all**, cartes de tâches (case à cocher, titre barré si terminé, description, badge horaire orange, pastille de catégorie) |
-| **Timeline — maquette 1** | `lib/features/tasks/presentation/timeline_screen.dart` | Flèche de retour + titre « Today's task », sélecteur de semaine (Mon 24 → Sun 30, jour sélectionné en orange), timeline verticale : heure à gauche, point (coché = terminé) relié par un trait orange, carte de tâche à droite, message vide « Aucune tâche pour ce jour » |
-| **Formulaire tâche** | `lib/features/tasks/presentation/task_form_screen.dart` | Titre*, description, date, heure, catégories sélectionnables, boutons **Enregistrer** / **Annuler** (README §3.2) |
-| **Calendrier** | `lib/features/calendar/presentation/calendar_screen.dart` | Mois de juin 2026, navigation mois, grille des jours (28 en orange), résumé du jour |
+| **Accueil** | `lib/features/dashboard/presentation/dashboard_screen.dart` | En-tête sombre arrondi avec vagues décoratives (« Hey Mobina ! » + avatar + « Let's find your best day! »), barre de recherche + bouton filtre sombre, section **Categories** en cartes horizontales (Personal en carte sombre avec flèche, Work / Health / Education en carte claire), sections « Today's task » et « Yesterday's task » avec lien **See all**, listes de tâches (case sombre cochée, titre barré si terminé, heure à droite) |
+| **Timeline** | `lib/features/tasks/presentation/timeline_screen.dart` | Retour + date (« June 28, 2026 ») + grand titre (« Today » ou nom du jour) + avatar, sélecteur de dates en pilules verticales (jour actif en pilule sombre avec pastille), timeline : point relié par un trait sombre, heure à droite, catégorie sous la description, **1re tâche mise en avant** (carte sombre « featured » avec bouton check + statut), message vide « Aucune tâche pour ce jour » |
+| **Formulaire tâche** | `lib/features/tasks/presentation/task_form_screen.dart` | Titre*, description, date, heure, catégories en pastilles (sélection sombre), boutons **Enregistrer** (sombre) / **Annuler** (README §3.2) |
+| **Calendrier** | `lib/features/calendar/presentation/calendar_screen.dart` | Juin 2026, navigation mois, grille des jours (28 en cercle sombre), résumé du jour sur carte claire |
 | **Paramètres** | `lib/features/settings/presentation/settings_screen.dart` | Thème sombre, notifications + rappel par défaut, langue, à propos (README §3.4) |
-| **Profil** | `lib/features/account/presentation/profile_screen.dart` | Avatar, nom, e-mail, 3 cartes de statistiques (tâches terminées, taux de réussite, semaine), liens (README §3.5) |
+| **Profil** | `lib/features/account/presentation/profile_screen.dart` | Avatar, nom, e-mail, 3 cartes de statistiques, liens (README §3.5) |
 
 ### Widgets réutilisables (`lib/shared/widgets/`)
 
 | Widget | Fichier | Rôle |
 |---|---|---|
-| Barre de navigation + FAB (+) | `bottom_nav_bar.dart` | 4 destinations (Accueil, Calendrier, Paramètres, Profil) + bouton flottant orange central qui dépasse de la barre |
-| Carte de tâche | `task_card.dart` | `TaskCard`, `TaskCheckbox`, `TimeBadge`, `CategoryLabel` |
-| Ligne de timeline | `timeline_tile.dart` | heure + point d'état + trait de liaison + carte |
+| Barre de navigation | `bottom_nav_bar.dart` | 4 destinations (Accueil, Calendrier, Paramètres, Profil) + bouton **+** central en cercle sombre cerclé de clair ; onglet actif en sombre avec pastille dessous |
+| Carte de tâche | `task_list_item.dart` | `TaskListItem` : case carrée sombre, titre/sous-titre, heure ou pastille à droite |
+| Ligne de timeline | `timeline_tile.dart` | `TimelineTask` (point + trait + contenu, variante featured) et `CategoryLabel` |
+| Titre de section | `section_title.dart` | `SectionTitle` : titre gras + lien d'action cliquable (« See all ») |
+| Avatar | `avatar.dart` | `Avatar` : cercle coloré avec initiales |
+| Vagues décoratives | `wave_painter.dart` | `WavePainter` : motif de vagues de l'en-tête sombre |
 
 ### Structure du code (architecture feature-first)
 
@@ -53,7 +62,7 @@ lib/
 ├── app/                           # "tout ce qui va avec" l'application
 │   ├── app.dart                   # FlowdayApp : MaterialApp + thème
 │   ├── home_shell.dart            # coque : barre de nav + onglets + bascule timeline
-│   └── theme/app_theme.dart       # AppColors (charte) + AppTheme.dark()
+│   └── theme/app_theme.dart       # AppColors (charte) + AppTheme.light()
 ├── core/                          # briques transverses (à remplir en phase logique)
 │   ├── constants/
 │   ├── errors/
@@ -135,11 +144,21 @@ recherche et filtres.
 
 ## 📝 Notes / décisions de design
 
+- **Refonte du design** : le design initial (sombre + orange) a été remplacé
+  par le code de référence fourni (thème clair + en-tête sombre avec vagues,
+  cartes très arrondies, timeline « featured », barre de nav avec bouton **+**
+  central). Le contenu fonctionnel Flowday (tâches, catégories, sections du
+  README) est conservé, seul le look a changé.
+- La palette et les composants du code de référence sont centralisés dans
+  `AppColors` / `AppTheme.light()` et réutilisés partout (`Avatar`,
+  `WavePainter`, `SectionTitle`, `TaskListItem`, `TimelineTask`).
+- Police **Roboto** (choix du nouveau design) ; le README recommandait Inter.
 - La maquette montre une catégorie **Education** en plus des 3 du MVP
   (Work, Health, Personal) : elle est intégrée au design, à confirmer pour le MVP.
-- Police **Inter** recommandée par le README : non embarquée pour l'instant
-  (pas de fichier de police dans le projet), la police système est utilisée.
+- Les cartes de catégories de l'accueil sont des cartes de démonstration
+  (libellés + descriptions fixes) : elles seront liées aux vraies catégories
+  en phase logique.
+- L'écran formulaire porte le titre « New task » ; « See all » ouvre la
+  timeline, dont la 1re tâche est mise en avant (carte sombre).
 - Les données affichées viennent de `mock_data.dart` : elles seront remplacées
   par le stockage local lors de la phase logique.
-- Le titre de l'écran formulaire reprend « Today's task » comme sur le README ;
-  à ajuster si besoin (« Nouvelle tâche »).

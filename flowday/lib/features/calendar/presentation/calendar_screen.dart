@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
 
-/// Vue calendrier mensuelle (README §3.3) — design statique.
+/// Vue calendrier mensuelle (README §3.3) — design statique, style clair
+/// du nouveau design (jour sélectionné en cercle sombre).
 class CalendarScreen extends StatelessWidget {
   const CalendarScreen({super.key});
 
@@ -21,23 +22,19 @@ class CalendarScreen extends StatelessWidget {
     // Juin 2026 : le 1er tombe un lundi → 30 cases, jour 28 sélectionné.
     const daysInMonth = 30;
     const selectedDay = 28;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        MediaQuery.of(context).padding.top + 24,
-        20,
-        110,
-      ),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Calendrier',
             style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
+              color: AppColors.text,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 20),
@@ -50,14 +47,14 @@ class CalendarScreen extends StatelessWidget {
                 onPressed: () {},
                 icon: const Icon(
                   Icons.chevron_left,
-                  color: AppColors.textPrimary,
+                  color: AppColors.dark,
                 ),
               ),
               const Text(
                 'June 2026',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 16,
+                  color: AppColors.text,
+                  fontSize: 17,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -65,7 +62,7 @@ class CalendarScreen extends StatelessWidget {
                 onPressed: () {},
                 icon: const Icon(
                   Icons.chevron_right,
-                  color: AppColors.textPrimary,
+                  color: AppColors.dark,
                 ),
               ),
             ],
@@ -81,7 +78,7 @@ class CalendarScreen extends StatelessWidget {
                     child: Text(
                       label,
                       style: const TextStyle(
-                        color: AppColors.textSecondary,
+                        color: AppColors.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -103,12 +100,12 @@ class CalendarScreen extends StatelessWidget {
               for (var day = 1; day <= daysInMonth; day++)
                 Center(
                   child: Container(
-                    width: 38,
-                    height: 38,
+                    width: 40,
+                    height: 40,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: day == selectedDay
-                          ? AppColors.accent
+                          ? AppColors.dark
                           : Colors.transparent,
                       shape: BoxShape.circle,
                     ),
@@ -117,7 +114,7 @@ class CalendarScreen extends StatelessWidget {
                       style: TextStyle(
                         color: day == selectedDay
                             ? Colors.white
-                            : AppColors.textPrimary,
+                            : AppColors.text,
                         fontSize: 14,
                         fontWeight: day == selectedDay
                             ? FontWeight.w700
@@ -133,10 +130,10 @@ class CalendarScreen extends StatelessWidget {
           // Résumé du jour sélectionné.
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
+              color: AppColors.lightCard,
+              borderRadius: BorderRadius.circular(30),
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,17 +141,17 @@ class CalendarScreen extends StatelessWidget {
                 Text(
                   'Friday, June 28',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    color: AppColors.text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 SizedBox(height: 6),
                 Text(
                   '4 tâches prévues',
                   style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
+                    color: AppColors.muted,
+                    fontSize: 14,
                   ),
                 ),
               ],

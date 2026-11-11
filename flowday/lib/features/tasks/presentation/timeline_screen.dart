@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/data/mock_data.dart';
+import '../../../shared/widgets/avatar.dart';
 import '../../../shared/widgets/timeline_tile.dart';
 
-/// « Today's task » : flèche de retour, sélecteur de semaine et timeline
-/// verticale des tâches — maquette 1.
+/// « Today's task » (maquette 1) au style du design de référence :
+/// grand titre du jour, sélecteur de dates en pilules verticales et
+/// timeline avec la première tâche mise en avant (carte sombre).
 class TimelineScreen extends StatefulWidget {
   const TimelineScreen({super.key, required this.onBack});
 
@@ -18,103 +20,99 @@ class TimelineScreen extends StatefulWidget {
 class _TimelineScreenState extends State<TimelineScreen> {
   int _selectedDayIndex = MockData.defaultWeekDayIndex;
 
+  static const List<String> _dayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  String get _dateLabel {
+    final day = MockData.weekDays[_selectedDayIndex];
+    return 'June ${day.dayNumber}, 2026';
+  }
+
+  String get _bigTitle => _selectedDayIndex == MockData.defaultWeekDayIndex
+      ? 'Today'
+      : _dayNames[_selectedDayIndex];
+
   @override
   Widget build(BuildContext context) {
-    // Les tâches affichées sont celles du jour sélectionné (maquette :
-    // même liste quel que soit le jour, la logique arrivera plus tard).
+    // Tâches affichées : même maquette quel que soit le jour sélectionné
+    // (la logique de chargement arrivera en phase 2).
     final tasks = MockData.todayTasks;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ----------------------------------------------------------------
-        // En-tête : retour + titre
+        // En-tête : retour + date + grand titre + avatar
         // ----------------------------------------------------------------
         Padding(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 6,
-          ),
+          padding: EdgeInsets.fromLTRB(10, topPadding + 18, 22, 0),
           child: Row(
             children: [
-              const SizedBox(width: 8),
               IconButton(
                 onPressed: widget.onBack,
                 icon: const Icon(
                   Icons.arrow_back_ios_new,
                   size: 20,
-                  color: AppColors.textPrimary,
+                  color: AppColors.dark,
                 ),
               ),
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    "Today's task",
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _dateLabel,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 15,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 5),
+                    Text(
+                      _bigTitle,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 39,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 48),
+              const Avatar(
+                initials: 'M',
+                color: AppColors.avatarSkin,
+                size: 50,
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
 
         // ----------------------------------------------------------------
-        // Sélecteur de semaine
+        // Sélecteur de dates (pilules verticales)
         // ----------------------------------------------------------------
         SizedBox(
-          height: 62,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: MockData.weekDays.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 9),
-            itemBuilder: (context, index) {
-              final day = MockData.weekDays[index];
-              final selected = index == _selectedDayIndex;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedDayIndex = index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 45,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.accent
-                        : AppColors.surfaceStrong,
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        day.label,
-                        style: TextStyle(
-                          color: selected
-                              ? Colors.white
-                              : AppColors.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${day.dayNumber}',
-                        style: TextStyle(
-                          color: selected
-                              ? Colors.white
-                              : AppColors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+          height: 105,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (var i = 0; i < MockData.weekDays.length; i++)
+                _DatePill(
+                  dayNumber: '${MockData.weekDays[i].dayNumber}',
+                  dayLabel: MockData.weekDays[i].label,
+                  selected: i == _selectedDayIndex,
+                  onTap: () => setState(() => _selectedDayIndex = i),
                 ),
-              );
-            },
+            ],
           ),
         ),
         const SizedBox(height: 22),
@@ -129,9 +127,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
                   itemCount: tasks.length,
                   itemBuilder: (context, index) {
-                    return TimelineTile(
-                      task: tasks[index],
-                      isFirst: index == 0,
+                    final task = tasks[index];
+                    return TimelineTask(
+                      title: task.title,
+                      description: task.description,
+                      time: task.timeLabel,
+                      category: task.category,
+                      completed: task.completed,
+                      featured: index == 0,
                       isLast: index == tasks.length - 1,
                     );
                   },
@@ -142,7 +145,72 @@ class _TimelineScreenState extends State<TimelineScreen> {
   }
 }
 
-/// Message affiché lorsqu'aucune tâche n'existe pour le jour (README §3.1).
+// ======================================================================
+// PILULE DE DATE
+// ======================================================================
+class _DatePill extends StatelessWidget {
+  const _DatePill({
+    required this.dayNumber,
+    required this.dayLabel,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String dayNumber;
+  final String dayLabel;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 48,
+        height: selected ? 100 : 70,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.dark : Colors.transparent,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              dayNumber,
+              style: TextStyle(
+                color: selected ? Colors.white : AppColors.muted,
+                fontSize: 15,
+                fontWeight:
+                    selected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              dayLabel,
+              style: TextStyle(
+                color: selected ? Colors.white : AppColors.muted,
+                fontSize: 14,
+              ),
+            ),
+            if (selected) ...[
+              const SizedBox(height: 9),
+              const CircleAvatar(
+                radius: 3,
+                backgroundColor: Colors.white,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ======================================================================
+// ÉTAT VIDE
+// ======================================================================
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -155,13 +223,13 @@ class _EmptyState extends StatelessWidget {
           Icon(
             Icons.event_available_outlined,
             size: 46,
-            color: AppColors.textSecondary,
+            color: AppColors.muted,
           ),
           SizedBox(height: 12),
           Text(
             'Aucune tâche pour ce jour',
             style: TextStyle(
-              color: AppColors.textSecondary,
+              color: AppColors.muted,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),

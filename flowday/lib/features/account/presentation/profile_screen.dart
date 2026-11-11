@@ -3,26 +3,23 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/app_theme.dart';
 
 /// Profil (README §3.5) : informations utilisateur et statistiques.
-/// Écran minimal pour le MVP — design statique.
+/// Écran minimal pour le MVP — design statique, style clair.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return ListView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        MediaQuery.of(context).padding.top + 24,
-        20,
-        110,
-      ),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
       children: [
         const Text(
           'Profil',
           style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+            color: AppColors.text,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 26),
@@ -33,27 +30,27 @@ class ProfileScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 44,
-                backgroundColor: AppColors.surfaceStrong,
+                backgroundColor: AppColors.lightCard,
                 child: Icon(
                   Icons.person,
                   size: 50,
-                  color: AppColors.textSecondary,
+                  color: AppColors.muted,
                 ),
               ),
               SizedBox(height: 14),
               Text(
                 'Mobina',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               SizedBox(height: 4),
               Text(
                 'mobina@flowday.app',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: AppColors.muted,
                   fontSize: 13,
                 ),
               ),
@@ -83,8 +80,15 @@ class ProfileScreen extends StatelessWidget {
         // Actions.
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
+            color: AppColors.itemBg,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.035),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: const Column(
             children: [
@@ -122,15 +126,15 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.lightCard,
+        borderRadius: BorderRadius.circular(26),
       ),
       child: Column(
         children: [
           Text(
             value,
             style: const TextStyle(
-              color: AppColors.accent,
+              color: AppColors.dark,
               fontSize: 22,
               fontWeight: FontWeight.w700,
             ),
@@ -140,7 +144,7 @@ class _StatCard extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: AppColors.textSecondary,
+              color: AppColors.muted,
               fontSize: 11,
             ),
           ),
@@ -163,12 +167,12 @@ class _ProfileLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.personal : AppColors.textPrimary;
+    final color = danger ? AppColors.personal : AppColors.text;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: danger ? color : AppColors.textSecondary),
+          Icon(icon, size: 22, color: danger ? color : AppColors.muted),
           const SizedBox(width: 12),
           Text(
             label,
@@ -182,7 +186,7 @@ class _ProfileLink extends StatelessWidget {
           Icon(
             Icons.chevron_right,
             size: 20,
-            color: danger ? color : AppColors.textSecondary,
+            color: danger ? color : AppColors.muted,
           ),
         ],
       ),

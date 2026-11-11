@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/app_theme.dart';
 
 /// Paramètres (README §3.4) : thème, notifications, langue, à propos.
-/// Design statique, les interrupteurs ne pilotent rien encore.
+/// Design statique au style clair, les interrupteurs ne pilotent rien.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -12,29 +12,26 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _darkTheme = true;
+  bool _darkTheme = false;
   bool _notifications = true;
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return ListView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        MediaQuery.of(context).padding.top + 24,
-        20,
-        110,
-      ),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
       children: [
         const Text(
           'Paramètres',
           style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+            color: AppColors.text,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 22),
-        _SectionTitle('Apparence'),
+        const _SectionTitle('Apparence'),
         _SettingsCard(
           children: [
             _SwitchRow(
@@ -46,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
         const SizedBox(height: 18),
-        _SectionTitle('Notifications'),
+        const _SectionTitle('Notifications'),
         _SettingsCard(
           children: [
             _SwitchRow(
@@ -64,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
         const SizedBox(height: 18),
-        _SectionTitle('Langue'),
+        const _SectionTitle('Langue'),
         _SettingsCard(
           children: const [
             _LinkRow(
@@ -75,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
         const SizedBox(height: 18),
-        _SectionTitle('À propos'),
+        const _SectionTitle('À propos'),
         _SettingsCard(
           children: const [
             _LinkRow(
@@ -86,7 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Divider(color: AppColors.divider, height: 1),
             _LinkRow(
               icon: Icons.description_outlined,
-              label: "Cahier des charges",
+              label: 'Cahier des charges',
               value: 'MVP',
             ),
           ],
@@ -108,7 +105,7 @@ class _SectionTitle extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: AppColors.textSecondary,
+          color: AppColors.muted,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -126,8 +123,15 @@ class _SettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.itemBg,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(children: children),
     );
@@ -153,13 +157,13 @@ class _SwitchRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: AppColors.textSecondary),
+          Icon(icon, size: 22, color: AppColors.muted),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: AppColors.text,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -169,9 +173,9 @@ class _SwitchRow extends StatelessWidget {
             value: value,
             onChanged: onChanged,
             activeThumbColor: Colors.white,
-            activeTrackColor: AppColors.accent,
-            inactiveThumbColor: AppColors.textSecondary,
-            inactiveTrackColor: AppColors.surfaceStrong,
+            activeTrackColor: AppColors.dark,
+            inactiveThumbColor: AppColors.muted,
+            inactiveTrackColor: AppColors.lightCard,
           ),
         ],
       ),
@@ -196,13 +200,13 @@ class _LinkRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: AppColors.textSecondary),
+          Icon(icon, size: 22, color: AppColors.muted),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: AppColors.text,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -211,7 +215,7 @@ class _LinkRow extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: AppColors.textSecondary,
+              color: AppColors.muted,
               fontSize: 13,
             ),
           ),
@@ -219,7 +223,7 @@ class _LinkRow extends StatelessWidget {
           const Icon(
             Icons.chevron_right,
             size: 20,
-            color: AppColors.textSecondary,
+            color: AppColors.muted,
           ),
         ],
       ),
