@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../core/providers/tasks_provider.dart';
 import '../features/account/presentation/profile_screen.dart';
 import '../features/calendar/presentation/calendar_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
@@ -27,6 +29,9 @@ class _HomeShellState extends State<HomeShell> {
   int _selectedIndex = 0;
   bool _timelineOpen = false;
 
+  /// Onglet d'où la timeline a été ouverte (retour à l'issue).
+  int _timelineOrigin = 0;
+
   void _onTabSelected(int index) {
     setState(() {
       _selectedIndex = index;
@@ -34,16 +39,49 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
-  void _openTimeline() => setState(() => _timelineOpen = true);
+  /// Ouvre la timeline sur `date` : charge la date demandée, bascule sur
+  /// l'onglet Accueil (même depuis le Calendrier) et mémorise l'onglet
+  /// d'origine pour y revenir à la fermeture.
+  void _openTimelineFor(DateTime date) {
+    context.read<TasksProvider>().selectDate(date);
+    setState(() {
+      _timelineOrigin = _selectedIndex;
+      _selectedIndex = 0;
+      _timelineOpen = true;
+    });
+  }
 
-  void _closeTimeline() => setState(() => _timelineOpen = false);
+  void _closeTimeline() {
+    setState(() {
+      _timelineOpen = false;
+      _selectedIndex = _timelineOrigin;
+    });
+  }
 
-  void _openTaskForm([TaskItem? task]) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TaskFormScreen(task: task),
+  /// Clic sur une tâche (dashboard) : coche / décoche (F6) avec retour
+  /// visuel via un message discret.
+  Future<void> _toggleTask(TaskItem task) async {
+    final ok = await context.read<TasksProvider>().toggle(task);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        content: Text(
+          !ok
+              ? 'Action impossible pour le moment. Réessayez.'
+              : task.completed
+              ? '« ${task.title} » réactivée.'
+              : '« ${task.title} » marquée comme terminée.',
+        ),
       ),
     );
+  }
+
+  void _openTaskForm([TaskItem? task]) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => TaskFormScreen(task: task)));
   }
 
   /// Ouvre la page « tâches de la catégorie » (flèche des cartes).
@@ -62,11 +100,11 @@ class _HomeShellState extends State<HomeShell> {
       _timelineOpen
           ? TimelineScreen(onBack: _closeTimeline)
           : DashboardScreen(
-              onSeeAll: _openTimeline,
-              onEditTask: _openTaskForm,
+              onSeeAll: _openTimelineFor,
+              onToggleTask: _toggleTask,
               onOpenCategory: _openCategory,
             ),
-      CalendarScreen(onOpenTimeline: _openTimeline),
+      CalendarScreen(onOpenTimeline: _openTimelineFor),
       const SettingsScreen(),
       const ProfileScreen(),
     ];

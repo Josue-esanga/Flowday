@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../../core/errors/api_exception.dart';
+import '../../core/network/supabase_auth_client.dart';
 import '../../core/network/supabase_rest_client.dart';
 import '../models/models.dart';
 
@@ -10,14 +11,15 @@ import '../models/models.dart';
 /// Tables exposées par l'API REST :
 /// - `planning_category` : `id`, `name`, `color`
 /// - `planning_task` : `id`, `title`, `description`, `date`, `time`,
-///   `completed`, `created_at`, `category_id` (+ `reminder` nullable)
+///   `completed`, `created_at`, `category_id` (+ `reminder` nullable,
+///   `user_id` géré par les politiques RLS)
 ///
 /// La catégorie est **embarquée** via la clé étrangère
 /// (`select=…,planning_category(id,name,color)`) : une seule requête par
 /// liste de tâches. Les erreurs HTTP sont levées sous forme d'`ApiException`.
 class TaskRepository {
-  TaskRepository({SupabaseRestClient? client})
-      : _client = client ?? SupabaseRestClient();
+  TaskRepository({SupabaseRestClient? client, TokenSource? auth})
+    : _client = client ?? SupabaseRestClient(tokens: auth);
 
   final SupabaseRestClient _client;
 
@@ -136,10 +138,7 @@ class TaskRepository {
   // F5 — suppression
   // ---------------------------------------------------------------------
   Future<void> deleteTask(String id) async {
-    final rows = await _client.delete(
-      'planning_task',
-      query: {'id': 'eq.$id'},
-    );
+    final rows = await _client.delete('planning_task', query: {'id': 'eq.$id'});
     if (rows.isEmpty) throw _notFound; // déjà absente → 404
   }
 
@@ -212,7 +211,9 @@ class TaskRepository {
   /// Ligne PostgREST → modèle du domaine (via le format API de `fromJson`).
   TaskItem _taskFromRow(Map<String, dynamic> row) {
     final cat = row['planning_category'];
-    final catMap = cat is Map<String, dynamic> ? cat : const <String, dynamic>{};
+    final catMap = cat is Map<String, dynamic>
+        ? cat
+        : const <String, dynamic>{};
     return TaskItem.fromJson({
       'id': row['id'],
       'title': row['title'],

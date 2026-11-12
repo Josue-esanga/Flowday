@@ -75,10 +75,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _time,
-    );
+    final picked = await showTimePicker(context: context, initialTime: _time);
     if (picked != null) setState(() => _time = picked);
   }
 
@@ -244,10 +241,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                       setState(() => _titleError = null);
                     }
                   },
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: AppColors.text, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Ex. Meeting with Shakib',
                     hintStyle: const TextStyle(
@@ -284,10 +278,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 TextField(
                   controller: _description,
                   maxLines: 3,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: AppColors.text, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Short description',
                     hintStyle: const TextStyle(
@@ -359,8 +350,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     children: [
                       for (final category in categories)
                         GestureDetector(
-                          onTap: () =>
-                              setState(() => _category = category),
+                          onTap: () => setState(() => _category = category),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -452,8 +442,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 SizedBox(
                   height: 52,
                   child: TextButton(
-                    onPressed:
-                        _saving ? null : () => Navigator.of(context).pop(),
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.muted,
                       shape: RoundedRectangleBorder(

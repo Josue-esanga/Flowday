@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowday/app/app.dart';
+import 'package:flowday/core/providers/auth_provider.dart';
 import 'package:flowday/shared/utils/date_utils.dart';
 
 import 'fakes/fake_task_repository.dart';
@@ -8,7 +9,9 @@ import 'fakes/fake_task_repository.dart';
 void main() {
   testWidgets("L'accueil affiche le design et charge l'API", (tester) async {
     final repo = FakeTaskRepository();
-    await tester.pumpWidget(FlowdayApp(repository: repo));
+    await tester.pumpWidget(
+      FlowdayApp(repository: repo, auth: AuthProvider.authenticated()),
+    );
     await tester.pumpAndSettle();
 
     // En-tête sombre + recherche + sections.

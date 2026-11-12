@@ -1,4 +1,5 @@
 import '../fixtures/mock_data.dart';
+
 import 'package:flowday/shared/data/task_repository.dart';
 import 'package:flowday/shared/models/models.dart';
 import 'package:flowday/shared/utils/date_utils.dart';
@@ -17,9 +18,8 @@ class FakeTaskRepository implements TaskRepository {
   final Map<String, TaskItem> _store = {};
 
   String get _today => FlowDates.apiDate(DateTime.now());
-  String get _yesterday => FlowDates.apiDate(
-        DateTime.now().subtract(const Duration(days: 1)),
-      );
+  String get _yesterday =>
+      FlowDates.apiDate(DateTime.now().subtract(const Duration(days: 1)));
 
   @override
   Future<List<Category>> fetchCategories() async => MockData.categories;
@@ -145,16 +145,13 @@ class FakeTaskRepository implements TaskRepository {
   }
 
   @override
-  Future<ProfileStats> fetchStats() async => const ProfileStats(
-        totalTasks: 30,
-        completedTasks: 12,
-        tasksThisWeek: 24,
-      );
+  Future<ProfileStats> fetchStats() async =>
+      const ProfileStats(totalTasks: 30, completedTasks: 12, tasksThisWeek: 24);
 
   Category _category(String id) => MockData.categories.firstWhere(
-        (c) => c.id == id,
-        orElse: () => MockData.work,
-      );
+    (c) => c.id == id,
+    orElse: () => MockData.work,
+  );
 
   TaskItem _byId(String id) {
     final cached = _store[id];

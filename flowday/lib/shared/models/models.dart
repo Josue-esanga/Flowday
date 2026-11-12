@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Catégorie d'une tâche (README §5).
 class Category {
-  const Category({
-    required this.id,
-    required this.name,
-    required this.color,
-  });
+  const Category({required this.id, required this.name, required this.color});
 
   final String id;
   final String name;
@@ -14,10 +10,10 @@ class Category {
 
   /// Depuis l'API : `{"id": "work", "name": "Work", "color": "#F4761F"}`.
   factory Category.fromJson(Map<String, dynamic> json) => Category(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        color: _hexToColor(json['color'] as String? ?? '#000000'),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    color: _hexToColor(json['color'] as String? ?? '#000000'),
+  );
 }
 
 /// Convertit une couleur hexadécimale « #RRGGBB » en [Color].
@@ -66,18 +62,18 @@ class TaskItem {
 
   /// Depuis l'API (voir `TaskSerializer`).
   factory TaskItem.fromJson(Map<String, dynamic> json) => TaskItem(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        description: (json['description'] ?? '') as String,
-        date: json['date'] as String,
-        time: _normalizeTime(json['time'] as String),
-        category: Category(
-          id: json['category'] as String,
-          name: (json['category_name'] ?? '') as String,
-          color: _hexToColor((json['category_color'] ?? '#000000') as String),
-        ),
-        completed: (json['completed'] ?? false) as bool,
-      );
+    id: json['id'] as String,
+    title: json['title'] as String,
+    description: (json['description'] ?? '') as String,
+    date: json['date'] as String,
+    time: _normalizeTime(json['time'] as String),
+    category: Category(
+      id: json['category'] as String,
+      name: (json['category_name'] ?? '') as String,
+      color: _hexToColor((json['category_color'] ?? '#000000') as String),
+    ),
+    completed: (json['completed'] ?? false) as bool,
+  );
 
   /// « 14:00:00 » ou « 14:00 » → « 14:00 ».
   static String _normalizeTime(String raw) {
@@ -121,8 +117,8 @@ class ProfileStats {
       : (completedTasks * 1000 / totalTasks).roundToDouble() / 10;
 
   factory ProfileStats.fromJson(Map<String, dynamic> json) => ProfileStats(
-        totalTasks: (json['total_tasks'] as num?)?.toInt() ?? 0,
-        completedTasks: (json['completed_tasks'] as num?)?.toInt() ?? 0,
-        tasksThisWeek: (json['tasks_this_week'] as num?)?.toInt() ?? 0,
-      );
+    totalTasks: (json['total_tasks'] as num?)?.toInt() ?? 0,
+    completedTasks: (json['completed_tasks'] as num?)?.toInt() ?? 0,
+    tasksThisWeek: (json['tasks_this_week'] as num?)?.toInt() ?? 0,
+  );
 }

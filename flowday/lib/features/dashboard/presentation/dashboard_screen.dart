@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../core/ui/states/error_state.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/avatar.dart';
 import '../../../shared/widgets/category_meta.dart';
 import '../../../shared/widgets/section_title.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/task_list_item.dart';
 import '../../../shared/widgets/wave_painter.dart';
 
@@ -15,19 +17,22 @@ import '../../../shared/widgets/wave_painter.dart';
 /// descriptions et noms de catégories), cartes de catégories cliquables
 /// (F7 → page « tâches de la catégorie ») et tâches d'aujourd'hui /
 /// d'hier (F1, triées par heure).
+///
+/// « See all » ouvre la timeline **sur la date de la section** (aujourd'hui
+/// / hier), et le clic sur une tâche la coche / la décoche (F6).
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
     required this.onSeeAll,
-    required this.onEditTask,
+    required this.onToggleTask,
     required this.onOpenCategory,
   });
 
-  /// Ouvre la timeline « Today's task ».
-  final VoidCallback onSeeAll;
+  /// Ouvre la timeline sur la date indiquée (section « See all »).
+  final ValueChanged<DateTime> onSeeAll;
 
-  /// Ouvre le formulaire en mode modification (F4).
-  final void Function(TaskItem task) onEditTask;
+  /// Coche / décoche la tâche cliquée (F6).
+  final void Function(TaskItem task) onToggleTask;
 
   /// Ouvre la page « tâches de la catégorie » (flèche des cartes).
   final void Function(Category category) onOpenCategory;
@@ -63,7 +68,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Consumer<TasksProvider>(
       builder: (context, state, _) {
         if (state.loading) {
-          return const Center(child: CircularProgressIndicator());
+          // Chargement « skeleton » : l'en-tête reste visible et le
+          // contenu à venir est esquimmé (perception de démarrage rapide).
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              const _DashboardHeader(),
+              const SizedBox(height: 18),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Skeleton(width: 150, height: 15, radius: 8),
+                    SizedBox(height: 16),
+                    SkeletonTaskTile(),
+                    SkeletonTaskTile(),
+                    SkeletonTaskTile(),
+                  ],
+                ),
+              ),
+            ],
+          );
         }
         if (state.error != null) {
           return ErrorState(message: state.error!, onRetry: state.retry);
@@ -80,10 +106,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : state.yesterdayTasks;
         final categories = searching
             ? state.categories
-                .where((c) => c.name.toLowerCase().contains(query))
-                .toList()
+                  .where((c) => c.name.toLowerCase().contains(query))
+                  .toList()
             : state.categories;
-        final noResults = searching &&
+        final noResults =
+            searching &&
             categories.isEmpty &&
             today.isEmpty &&
             yesterday.isEmpty;
@@ -196,10 +223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Center(
                       child: Text(
                         'Aucune catégorie',
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: AppColors.muted, fontSize: 14),
                       ),
                     ),
                   )
@@ -238,7 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SectionTitle(
                   title: "Today's task",
                   action: 'See all',
-                  onAction: widget.onSeeAll,
+                  onAction: () => widget.onSeeAll(DateTime.now()),
                 ),
                 const SizedBox(height: 15),
                 if (today.isEmpty)
@@ -257,7 +281,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      onTap: () => widget.onEditTask(task),
+                      // Clic sur la carte : coche / décoche la tâche (F6).
+                      onTap: () => widget.onToggleTask(task),
                     ),
                 const SizedBox(height: 20),
               ],
@@ -269,7 +294,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SectionTitle(
                   title: "Yesterday's task",
                   action: 'See all',
-                  onAction: widget.onSeeAll,
+                  onAction: () => widget.onSeeAll(
+                    DateTime.now().subtract(const Duration(days: 1)),
+                  ),
                 ),
                 const SizedBox(height: 15),
                 if (yesterday.isEmpty)
@@ -288,7 +315,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      onTap: () => widget.onEditTask(task),
+                      // Clic sur la carte : coche / décoche la tâche (F6).
+                      onTap: () => widget.onToggleTask(task),
                     ),
                 const SizedBox(height: 25),
               ],
@@ -309,6 +337,7 @@ class _DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final firstName = _firstName(context.watch<AuthProvider>());
 
     return Container(
       height: 225 + topPadding,
@@ -328,17 +357,19 @@ class _DashboardHeader extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Hey Mobina !',
-                      style: TextStyle(
+                      'Hey $firstName !',
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
                       ),
                     ),
                   ),
-                  const Avatar(
-                    initials: 'M',
+                  Avatar(
+                    initials: firstName.isEmpty
+                        ? 'M'
+                        : firstName[0].toUpperCase(),
                     color: AppColors.avatarSkin,
                     size: 48,
                   ),
@@ -359,6 +390,15 @@ class _DashboardHeader extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Prénom affiché : `full_name` du compte, à défaut « Mobina »
+  /// (placeholder du design — aucune donnée réelle codée en dur).
+  static String _firstName(AuthProvider auth) {
+    final full = auth.fullName;
+    if (full.isEmpty) return 'Mobina';
+    final words = full.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    return words.isEmpty ? 'Mobina' : words.first;
   }
 }
 

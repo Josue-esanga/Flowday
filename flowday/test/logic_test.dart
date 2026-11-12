@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowday/app/app.dart';
+import 'package:flowday/core/providers/auth_provider.dart';
 import 'package:flowday/features/tasks/presentation/category_tasks_screen.dart';
 import 'package:flowday/features/tasks/presentation/task_form_screen.dart';
 import 'package:flowday/shared/widgets/timeline_tile.dart';
@@ -9,6 +10,7 @@ import 'fakes/fake_task_repository.dart';
 
 /// Tests de logique bout en bout (F3 → F6) avec un faux repository :
 /// l'UI appelle bien le provider → repository → API (simulée).
+/// La session est injectée ouverte (pas de connexion réelle en test).
 void main() {
   late FakeTaskRepository repo;
 
@@ -20,7 +22,9 @@ void main() {
 
   Future<void> pumpApp(WidgetTester tester) async {
     repo = FakeTaskRepository();
-    await tester.pumpWidget(FlowdayApp(repository: repo));
+    await tester.pumpWidget(
+      FlowdayApp(repository: repo, auth: AuthProvider.authenticated()),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -52,8 +56,9 @@ void main() {
     expect(find.text('Réunion équipe'), findsOneWidget);
   });
 
-  testWidgets('Validation — titre obligatoire (pas d’appel API)',
-      (tester) async {
+  testWidgets('Validation — titre obligatoire (pas d’appel API)', (
+    tester,
+  ) async {
     await pumpApp(tester);
 
     await tester.tap(find.byIcon(Icons.add));
@@ -117,10 +122,7 @@ void main() {
 
     expect(find.text('Edit task'), findsOneWidget);
 
-    await tester.enterText(
-      formFields.first,
-      'Meeting modifié',
-    );
+    await tester.enterText(formFields.first, 'Meeting modifié');
     await tester.tap(find.text('Enregistrer'));
     await tester.pumpAndSettle();
 
@@ -171,8 +173,9 @@ void main() {
     expect(find.text('Meeting with Shakib'), findsOneWidget);
   });
 
-  testWidgets('Carte de catégorie → page des tâches de la catégorie',
-      (tester) async {
+  testWidgets('Carte de catégorie → page des tâches de la catégorie', (
+    tester,
+  ) async {
     await pumpApp(tester);
 
     // Toutes les cartes visibles ont leur flèche (carte entière cliquable).

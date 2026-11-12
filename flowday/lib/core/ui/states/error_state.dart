@@ -5,11 +5,7 @@ import '../../../app/theme/app_theme.dart';
 /// État d'erreur plein écran : icône, message et bouton « Réessayer »
 /// (utilisé quand le serveur est injoignable ou renvoie une erreur).
 class ErrorState extends StatelessWidget {
-  const ErrorState({
-    super.key,
-    required this.message,
-    required this.onRetry,
-  });
+  const ErrorState({super.key, required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;

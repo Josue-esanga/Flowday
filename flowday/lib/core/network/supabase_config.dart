@@ -30,6 +30,16 @@ class SupabaseConfig {
     defaultValue: 'sb_publishable_XOefhBGt_eO6kdw12ndZiA_n3E6bRvC',
   );
 
+  /// Redirection des liens d'authentification GoTrue (e-mail de
+  /// confirmation d'inscription) : **deep link** de l'application.
+  ///
+  /// Le lien d'e-mail pointe vers GoTrue (`/auth/v1/verify`), qui
+  /// redirige ensuite vers cette URL avec un code PKCE — l'app reçoit le
+  /// lien et ouvre la session (voir `AuthDeepLinks`). Doit aussi figurer
+  /// dans les *Redirect URLs* du dashboard Supabase
+  /// (Authentication → URL Configuration).
+  static const String emailRedirectUri = 'flowday://login-callback';
+
   /// Endpoint REST (PostgREST) du projet.
   static final Uri restBase = Uri.parse('$projectUrl/rest/v1');
 

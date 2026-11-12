@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/ui/confirm_sign_out.dart';
 
 /// Paramètres (README §3.4) : thème, notifications, langue, à propos.
 /// Design statique au style clair, les interrupteurs ne pilotent rien.
@@ -18,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final auth = context.watch<AuthProvider>();
 
     return ListView(
       padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
@@ -64,10 +68,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const _SectionTitle('Langue'),
         _SettingsCard(
           children: const [
-            _LinkRow(
-              icon: Icons.translate,
-              label: 'Langue',
-              value: 'Français',
+            _LinkRow(icon: Icons.translate, label: 'Langue', value: 'Français'),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const _SectionTitle('Compte'),
+        _SettingsCard(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.account_circle_outlined,
+                    size: 22,
+                    color: AppColors.muted,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Connecté en tant que',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          auth.email ?? '—',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: AppColors.divider, height: 1),
+            InkWell(
+              onTap: auth.busy ? null : () => _signOut(context),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 22, color: AppColors.personal),
+                    SizedBox(width: 12),
+                    Text(
+                      'Se déconnecter',
+                      style: TextStyle(
+                        color: AppColors.personal,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -90,6 +153,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  /// Déconnexion avec confirmation → le sélecteur de session bascule sur
+  /// l'écran de connexion.
+  Future<void> _signOut(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (!await confirmSignOut(context)) return;
+    if (!context.mounted) return;
+    await context.read<AuthProvider>().signOut();
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Vous êtes déconnecté.'),
+        ),
+      );
   }
 }
 
@@ -214,17 +294,10 @@ class _LinkRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           const SizedBox(width: 6),
-          const Icon(
-            Icons.chevron_right,
-            size: 20,
-            color: AppColors.muted,
-          ),
+          const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
         ],
       ),
     );

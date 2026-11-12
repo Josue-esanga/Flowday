@@ -61,6 +61,11 @@ Console d'administration (optionnelle) :
 | DELETE | `/api/tasks/<uuid>/` | F5 — suppression |
 | POST | `/api/tasks/<uuid>/toggle/` | F6 — terminer / déterminer |
 | GET | `/api/stats/` | §3.5 — statistiques du profil |
+| POST | `/api/auth/register/` | Inscription → `{token, user}` (201) |
+| POST | `/api/auth/login/` | Connexion → `{token, user}` (200) |
+| POST | `/api/auth/logout/` | Déconnexion (204, jeton révoqué) |
+| GET / PATCH | `/api/auth/me/` | Profil : nom, e-mail, mot de passe |
+| POST / DELETE | `/api/auth/me/photo/` | Photo de profil (≤ 2 Mo) |
 | GET | `/api/schema/` | schéma OpenAPI 3 (JSON / YAML) |
 | GET | `/api/docs/` | **Swagger UI** (interface interactive) |
 | GET | `/api/redoc/` | Redoc (documentation classique) |
@@ -84,6 +89,29 @@ Générer le schéma en fichier (ex. pour un outil de codegen) :
 ```bash
 .venv/bin/python manage.py spectacular --file schema.yaml
 ```
+
+## 2.2 Authentification (app `accounts`)
+
+Complément côté Django de l'auth Supabase (voir §4 — **deux couches
+complémentaires**) : inscription, connexion et gestion du profil avec le
+système de jetons DRF (`rest_framework.authtoken`).
+
+- **En-tête requis** sur `/api/auth/me/` et `/api/auth/me/photo/` :
+  `Authorization: Token <jeton>` (401 sinon).
+- `POST /api/auth/register/` : `{email, password, first_name?, last_name?}`
+  → **201** `{token, user}` ; e-mail unique (minuscules), mot de passe
+  validé par les validateurs Django (8 car. min., mots communs…).
+- `POST /api/auth/login/` : `{email, password}` → **200** `{token, user}` ;
+  identifiants invalides → 400 (message générique, aucune fuite).
+- `POST /api/auth/logout/` : révoque le jeton → **204**.
+- `GET /api/auth/me/` → `{id, email, first_name, last_name, photo_url}` ;
+  `PATCH` accepte `first_name`, `last_name`, `email` et, pour changer le mot
+  de passe, `current_password` (**requis**, sinon 400) + `new_password`.
+- `POST /api/auth/me/photo/` : multipart `photo` (JPEG/PNG, **2 Mo max.**,
+  Pillow) → `{photo_url}` — l'ancien fichier est remplacé et supprimé ;
+  `DELETE` → `{photo_url: null}`. Fichiers servis sous `/media/…` (DEBUG).
+- Toutes les erreurs de validation : 400 avec les messages FR des
+  serializers (jamais de détail interne).
 
 ### Format d'une tâche
 
@@ -139,6 +167,38 @@ curl -X DELETE http://127.0.0.1:8000/api/tasks/<uuid>/
 
 # Statistiques
 curl http://127.0.0.1:8000/api/stats/
+
+# --- Authentification (app accounts) ---
+# Inscription
+curl -X POST http://127.0.0.1:8000/api/auth/register/ \
+  -H "Content-Type: application/json" \
+  -d '{"email":"jane@example.com","password":"MotDePasse2026","first_name":"Jane"}'
+
+# Connexion → {"token":"…","user":{…}}
+curl -X POST http://127.0.0.1:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"email":"jane@example.com","password":"MotDePasse2026"}'
+
+# Profil (avec le jeton)
+curl http://127.0.0.1:8000/api/auth/me/ -H "Authorization: Token <jeton>"
+curl -X PATCH http://127.0.0.1:8000/api/auth/me/ \
+  -H "Authorization: Token <jeton>" -H "Content-Type: application/json" \
+  -d '{"first_name":"Jane","last_name":"Doe"}'
+
+# Changer le mot de passe (le mot de passe actuel est requis)
+curl -X PATCH http://127.0.0.1:8000/api/auth/me/ \
+  -H "Authorization: Token <jeton>" -H "Content-Type: application/json" \
+  -d '{"current_password":"MotDePasse2026","new_password":"Nouveau2026"}'
+
+# Photo de profil (JPEG/PNG ≤ 2 Mo) puis suppression
+curl -X POST http://127.0.0.1:8000/api/auth/me/photo/ \
+  -H "Authorization: Token <jeton>" -F "photo=@avatar.jpg"
+curl -X DELETE http://127.0.0.1:8000/api/auth/me/photo/ \
+  -H "Authorization: Token <jeton>"
+
+# Déconnexion (204, jeton révoqué)
+curl -X POST http://127.0.0.1:8000/api/auth/logout/ \
+  -H "Authorization: Token <jeton>"
 ```
 
 ## 4. Consommation depuis Flutter
@@ -156,17 +216,47 @@ du projet — configurée dans
 | `planning_category` | F7 — `GET …/planning_category?select=id,name,color` |
 | `planning_task` | F1–F6 + stats — filtres `date=eq.…`, plage `date=gte.…&date=lte.…`, `category_id=eq.…`, catégorie embarquée `select=…,planning_category(id,name,color)` |
 
-Politiques RLS nécessaires (déjà en place sur le projet) :
+**Authentification (phase 5)** : l'app passe par Supabase Auth (GoTrue,
+`/auth/v1/signup`, `/auth/v1/token?grant_type=password`, `refresh_token`,
+`logout`) et joint le **jeton utilisateur** à chaque requête REST. Le RLS
+n'autorise chaque compte qu'à **ses propres tâches**.
+
+**Architecture à double couche (phase 6)** : l'app Flutter continue de
+parler à **Supabase GoTrue** pour l'authentification des tâches —
+indispensable, car les policies RLS lisent `auth.uid()` — tandis que l'API
+Django (`/api/auth/…`, §2.2) gère **sa propre auth par jeton** en parallèle
+(admin, Swagger, tests, usage serveur). Deux couches complémentaires, sans
+donnée partagée : la photo de profil GoTrue vit dans `user_metadata`
+(data-URL), celle de Django dans `MEDIA/` (`Profile.photo`).
+
+Politiques RLS en place (remplacent les anciennes politiques `anon`
+largement ouvertes) :
 
 ```sql
-CREATE POLICY planning_task_anon ON planning_task FOR ALL TO anon
-  USING (true) WITH CHECK (true);
-CREATE POLICY planning_category_anon ON planning_category FOR ALL TO anon
-  USING (true) WITH CHECK (true);
+-- Colonne propriétaire (écriture automatique à l'insertion)
+ALTER TABLE planning_task ADD COLUMN user_id uuid REFERENCES auth.users(id);
+ALTER TABLE planning_task ALTER COLUMN user_id SET DEFAULT auth.uid();
+CREATE INDEX planning_task_user_id_idx ON planning_task(user_id);
+
+-- Un compte ne voit / ne modifie que SES tâches
+CREATE POLICY task_select ON planning_task FOR SELECT TO authenticated
+  USING (user_id = auth.uid());
+CREATE POLICY task_insert ON planning_task FOR INSERT TO authenticated
+  WITH CHECK (user_id = auth.uid());
+CREATE POLICY task_update ON planning_task FOR UPDATE TO authenticated
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE POLICY task_delete ON planning_task FOR DELETE TO authenticated
+  USING (user_id = auth.uid());
+-- Catégories : lecture partagée pour les comptes connectés
+CREATE POLICY category_select ON planning_category FOR SELECT TO authenticated
+  USING (true);
+-- Aucune politique pour `anon` : sans connexion → lecture [] / écriture 42501
 ```
 
-> Le RLS est activé sur les tables : **sans politique, le rôle `anon` ne
-> voit aucune ligne** (réponses `[]` ou `42501`).
+> Compte de démo / tests : `flowday.test@gmail.com` (`Flowday!Test2026`).
+> Les nouvelles inscriptions reçoivent un e-mail de confirmation (à
+> valider avant connexion). Le service Django, connecté en `postgres`
+> (bypass RLS), continue de voir toutes les lignes (admin).
 
 ### API Django optionnelle (admin / Swagger / tests)
 
@@ -224,12 +314,18 @@ class FlowdayApi {
 ## 5. Tests
 
 ```bash
-.venv/bin/python manage.py test
+.venv/bin/python manage.py test --keepdb
 ```
 
-Couvre : seed des catégories (F7), création / titre obligatoire / heure
-valide (F3), tri par heure et filtres jour + semaine (F1, F2), modification
-(F4), suppression (F5), toggle (F6), statistiques (§3.5).
+**28 tests** couvrent :
+
+- `planning` (14) : seed des catégories (F7), création / titre obligatoire /
+  heure valide (F3), tri par heure et filtres jour + semaine (F1, F2),
+  modification (F4), suppression (F5), toggle (F6), statistiques (§3.5) ;
+- `accounts` (14) : inscription (201 + doublon 400), connexion (jeton,
+  mauvais mot de passe 400), `me` GET/PATCH (nom, e-mail, `current_password`
+  requis pour le mot de passe), photo (upload, remplacement, suppression,
+  2 Mo max.), déconnexion (jeton révoqué → 401).
 
 ## 6. Structure
 
@@ -239,16 +335,25 @@ flowday_api/
 ├── requirements.txt
 ├── README.md                # ce fichier
 ├── config/                  # projet Django (settings, urls)
-│   ├── settings.py          # DRF + CORS + Swagger (drf-spectacular)
-│   └── urls.py              # /api/ → planning.urls
-└── planning/                # app métier
-    ├── models.py            # Category, Task (README §5)
-    ├── serializers.py       # validation des règles métier
-    ├── views.py             # TaskViewSet, CategoryViewSet, stats
-    ├── urls.py              # routes /api/…
+│   ├── settings.py          # DRF + CORS + Swagger (drf-spectacular) + MEDIA
+│   └── urls.py              # /api/ → planning.urls + /api/auth/ → accounts
+├── planning/                # app métier
+│   ├── models.py            # Category, Task (README §5)
+│   ├── serializers.py       # validation des règles métier
+│   ├── views.py             # TaskViewSet, CategoryViewSet, stats
+│   ├── urls.py              # routes /api/…
+│   ├── admin.py
+│   ├── tests.py
+│   └── migrations/
+│       ├── 0001_initial.py
+│       └── 0002_seed_categories.py   # Work / Health / Personal / Education
+└── accounts/                # app auth (phase 6)
+    ├── models.py            # Profile (photo de profil, MEDIA/)
+    ├── serializers.py       # register / login / me / photo (règles FR)
+    ├── views.py             # /api/auth/… (jeton DRF)
+    ├── urls.py              # register, login, logout, me, me/photo
     ├── admin.py
-    ├── tests.py
+    ├── tests.py             # 14 tests d'intégration
     └── migrations/
-        ├── 0001_initial.py
-        └── 0002_seed_categories.py   # Work / Health / Personal / Education
+        └── 0001_initial.py
 ```

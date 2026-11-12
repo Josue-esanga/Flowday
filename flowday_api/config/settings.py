@@ -57,11 +57,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # API
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     # Documentation OpenAPI / Swagger
     'drf_spectacular',
     # App métier
     'planning',
+    # Comptes utilisateurs (inscription / connexion / profil)
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -75,11 +78,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Django REST Framework — API publique pour le MVP (pas de compte utilisateur
-# README §7). L'authentification sera ajoutée avec la synchronisation cloud.
+# Django REST Framework — API publique pour les endpoints métier (README
+# §7) ; les endpoints /api/auth/ exigent un jeton (TokenAuthentication).
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': None,
     # Heure lisible côté Flutter : "16:00" (entrée acceptée aussi en "16:00").
@@ -101,6 +108,9 @@ SPECTACULAR_SETTINGS = {
         'heure (F1), sélecteur de semaine (F2), création (F3), modification '
         '(F4), suppression (F5), termination des tâches (F6), catégories '
         '(F7) et statistiques du profil (§3.5).\n\n'
+        'Comptes utilisateurs (`/api/auth/`) : inscription, connexion par '
+        'jeton, modification du profil (nom, e-mail, mot de passe) et photo '
+        'de profil.\n\n'
         'Base URL exemple Android : http://10.0.2.2:8000/api'
     ),
     'VERSION': '1.0.0',
@@ -178,6 +188,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Fichiers téléversés (photo de profil) — servis en développement.
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # Email

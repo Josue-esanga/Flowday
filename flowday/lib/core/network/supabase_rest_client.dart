@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../errors/api_exception.dart';
+import 'supabase_auth_client.dart';
 import 'supabase_config.dart';
 
 /// Client HTTP minimal vers l'API REST **Supabase** (PostgREST).
@@ -14,30 +15,45 @@ import 'supabase_config.dart';
 /// - `PATCH  <table>?id=eq.<uuid>` (mise à jour partielle)
 /// - `DELETE <table>?id=eq.<uuid>` (renvoie les lignes supprimées)
 ///
-/// Les en-têtes `apikey` + `Authorization` portent la clé publique du projet
-/// (`SupabaseConfig.anonKey`). Toutes les réponses sont des **listes de
-/// lignes** : une liste vide sur une mutation signifie « ligne introuvable »
-/// et est traduite en `ApiException(404)` par la couche au-dessus.
+/// **Authentification** : l'en-tête `apikey` porte la clé publique du
+/// projet, l'en-tête `Authorization` porte le **jeton de l'utilisateur
+/// connecté** ([TokenSource]) — les politiques RLS de la base ne
+/// laissent alors à chacun que l'accès à ses propres tâches. Si le
+/// jeton est refusé (401), le client tente un rafraîchissement puis
+/// réessaie la requête une fois ; sinon la session est close et
+/// l'application bascule à l'écran de connexion.
+///
+/// Toutes les réponses sont des **listes de lignes** : une liste vide
+/// sur une mutation signifie « ligne introuvable » et est traduite en
+/// `ApiException(404)` par la couche au-dessus. Les messages d'erreur
+/// affichés sont professionnels et génériques — le détail brut du
+/// serveur part uniquement en console.
 class SupabaseRestClient {
-  SupabaseRestClient({http.Client? client}) : _client = client ?? http.Client();
+  SupabaseRestClient({http.Client? client, this.tokens})
+    : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  /// Jetons de l'utilisateur connecté (authentification + rafraîchissement).
+  final TokenSource? tokens;
 
   /// Délai par requête (Supabase est public : réseau mobile compris).
   static const Duration _timeout = Duration(seconds: 10);
 
   static const String _networkMessage =
-      'Serveur Supabase injoignable : vérifiez votre connexion internet.';
+      'Impossible de joindre le serveur. Vérifiez votre connexion internet, '
+      'puis réessayez.';
 
-  static const String _missingKeyMessage =
-      'Clé API Supabase manquante : renseignez FLOWDAY_SUPABASE_ANON_KEY '
-      'ou la valeur par défaut de SupabaseConfig.anonKey.';
+  static const String _configMessage =
+      'Application non configurée. Contactez le support.';
 
+  /// En-têtes : `apikey` (identification du projet) + `Authorization`
+  /// (jeton utilisateur, sinon clé publique → rôle `anon` bloqué par RLS).
   Map<String, String> get _headers => {
-        'apikey': SupabaseConfig.anonKey,
-        'Authorization': 'Bearer ${SupabaseConfig.anonKey}',
-        'Accept': 'application/json',
-      };
+    'apikey': SupabaseConfig.anonKey,
+    'Authorization': 'Bearer ${tokens?.accessToken ?? SupabaseConfig.anonKey}',
+    'Accept': 'application/json',
+  };
 
   /// GET : lignes de `table`. Les filtres PostgREST passent par `query`,
   /// ex. `{'select': 'id,name', 'date': 'eq.2026-11-11'}` ; une valeur
@@ -45,40 +61,37 @@ class SupabaseRestClient {
   Future<List<Map<String, dynamic>>> get(
     String table, {
     Map<String, Object> query = const {},
-  }) =>
-      _send('GET', table, query: query);
+  }) => _send('GET', table, query: query);
 
   /// POST : insère `body` et renvoie la ligne créée (avec les `select`).
   Future<List<Map<String, dynamic>>> post(
     String table, {
     required Map<String, dynamic> body,
     Map<String, Object> query = const {},
-  }) =>
-      _send('POST', table, query: query, body: body);
+  }) => _send('POST', table, query: query, body: body);
 
   /// PATCH : met à jour les lignes visées par `query` avec `body`.
   Future<List<Map<String, dynamic>>> patch(
     String table, {
     required Map<String, dynamic> body,
     Map<String, Object> query = const {},
-  }) =>
-      _send('PATCH', table, query: query, body: body);
+  }) => _send('PATCH', table, query: query, body: body);
 
   /// DELETE : supprime les lignes visées par `query`, renvoie les supprimées.
   Future<List<Map<String, dynamic>>> delete(
     String table, {
     Map<String, Object> query = const {},
-  }) =>
-      _send('DELETE', table, query: query);
+  }) => _send('DELETE', table, query: query);
 
   Future<List<Map<String, dynamic>>> _send(
     String method,
     String table, {
     Map<String, Object> query = const {},
     Map<String, dynamic>? body,
+    bool retried = false,
   }) async {
     if (!SupabaseConfig.isConfigured) {
-      throw const ApiException(statusCode: 0, message: _missingKeyMessage);
+      throw const ApiException(statusCode: 0, message: _configMessage);
     }
 
     final uri = SupabaseConfig.restBase.replace(
@@ -101,6 +114,20 @@ class SupabaseRestClient {
 
       final streamed = await _client.send(request).timeout(_timeout);
       final response = await http.Response.fromStream(streamed);
+
+      // 401 → rafraîchir la session puis réessayer une seule fois.
+      if (response.statusCode == 401 && !retried) {
+        final refreshed = await tokens?.refreshSession() ?? false;
+        if (refreshed) {
+          return await _send(
+            method,
+            table,
+            query: query,
+            body: body,
+            retried: true,
+          );
+        }
+      }
       return _decode(response);
     } on TimeoutException {
       throw const ApiException(statusCode: 0, message: _networkMessage);
@@ -114,10 +141,12 @@ class SupabaseRestClient {
   /// Réponse 2xx → liste de lignes (vide si corps vide).
   List<Map<String, dynamic>> _decode(http.Response response) {
     if (response.statusCode >= 400) {
-      throw ApiException.fromBody(
+      final error = ApiException.fromBody(
         response.statusCode,
         _errorBody(response.body),
       );
+      error.logDetails('rest'); // détail serveur → console
+      throw error;
     }
     if (response.body.isEmpty) return const [];
     final decoded = jsonDecode(response.body);
@@ -138,6 +167,6 @@ class SupabaseRestClient {
         // corps non JSON : on retombe sur le message générique ci-dessous
       }
     }
-    return {'message': 'Erreur serveur'};
+    return const {'message': 'Erreur serveur'};
   }
 }

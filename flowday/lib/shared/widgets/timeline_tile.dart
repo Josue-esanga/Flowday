@@ -130,9 +130,7 @@ class TimelineTask extends StatelessWidget {
                     Text(
                       description,
                       style: TextStyle(
-                        color: featured
-                            ? Colors.white70
-                            : AppColors.muted,
+                        color: featured ? Colors.white70 : AppColors.muted,
                         fontSize: 15,
                         height: 1.4,
                       ),
@@ -172,9 +170,7 @@ class TimelineTask extends StatelessWidget {
                           Text(
                             completed ? 'Terminée' : 'À faire',
                             style: TextStyle(
-                              color: completed
-                                  ? Colors.white
-                                  : Colors.white70,
+                              color: completed ? Colors.white : Colors.white70,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),

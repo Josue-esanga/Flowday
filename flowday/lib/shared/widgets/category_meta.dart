@@ -11,5 +11,4 @@ const Map<String, (String, IconData)> categoryInfo = {
 };
 
 /// Icône d'une catégorie (repli : étiquette).
-IconData categoryIcon(String id) =>
-    categoryInfo[id]?.$2 ?? Icons.label_outline;
+IconData categoryIcon(String id) => categoryInfo[id]?.$2 ?? Icons.label_outline;

@@ -6,6 +6,7 @@ import '../../../core/providers/tasks_provider.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/utils/date_utils.dart';
 import '../../../shared/widgets/avatar.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/timeline_tile.dart';
 import 'task_form_screen.dart';
 
@@ -120,7 +121,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   dayNumber: '${week[i].day}',
                   dayLabel: FlowDates.shortWeekday(week[i]),
                   selected: i == _selectedIndex(state.selectedDate),
-                  onTap: () => context.read<TasksProvider>().selectDate(week[i]),
+                  onTap: () =>
+                      context.read<TasksProvider>().selectDate(week[i]),
                 ),
             ],
           ),
@@ -149,7 +151,8 @@ class _TimelineBody extends StatelessWidget {
     final state = context.watch<TasksProvider>();
 
     if (state.dayLoading) {
-      return const Center(child: CircularProgressIndicator());
+      // Liste en skeleton (timeline groupée par heure).
+      return const SkeletonTaskList(itemCount: 5);
     }
 
     if (state.dayError != null) {
@@ -246,10 +249,7 @@ class _TimelineBody extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(
-                Icons.delete_outline,
-                color: AppColors.personal,
-              ),
+              leading: Icon(Icons.delete_outline, color: AppColors.personal),
               title: Text(
                 'Supprimer',
                 style: TextStyle(color: AppColors.personal),
@@ -266,11 +266,9 @@ class _TimelineBody extends StatelessWidget {
   }
 
   void _pushEdit(BuildContext context, TaskItem task) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TaskFormScreen(task: task),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => TaskFormScreen(task: task)));
   }
 
   Future<void> _confirmDelete(BuildContext context, TaskItem task) async {
@@ -353,8 +351,7 @@ class _DatePill extends StatelessWidget {
               style: TextStyle(
                 color: selected ? Colors.white : AppColors.muted,
                 fontSize: 15,
-                fontWeight:
-                    selected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
             const SizedBox(height: 7),
@@ -367,10 +364,7 @@ class _DatePill extends StatelessWidget {
             ),
             if (selected) ...[
               const SizedBox(height: 9),
-              const CircleAvatar(
-                radius: 3,
-                backgroundColor: Colors.white,
-              ),
+              const CircleAvatar(radius: 3, backgroundColor: Colors.white),
             ],
           ],
         ),

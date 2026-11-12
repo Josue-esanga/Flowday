@@ -58,8 +58,8 @@ class FlowDates {
 
   /// Les 7 jours (lundi → dimanche) de la semaine de [day].
   static List<DateTime> weekOf(DateTime day) => [
-        for (var i = 0; i < 7; i++) mondayOf(day).add(Duration(days: i)),
-      ];
+    for (var i = 0; i < 7; i++) mondayOf(day).add(Duration(days: i)),
+  ];
 
   /// [TimeOfDay] → « 14:00 » (format API).
   static String timeParam(TimeOfDay t) =>

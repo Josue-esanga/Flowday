@@ -8,6 +8,7 @@ import '../../../core/ui/states/error_state.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/utils/date_utils.dart';
 import '../../../shared/widgets/category_meta.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/task_list_item.dart';
 import 'task_form_screen.dart';
 
@@ -40,9 +41,9 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
       _error = null;
     });
     try {
-      final tasks = await context
-          .read<TasksProvider>()
-          .tasksOfCategory(widget.category.id);
+      final tasks = await context.read<TasksProvider>().tasksOfCategory(
+        widget.category.id,
+      );
       if (!mounted) return;
       setState(() {
         _tasks = tasks;
@@ -65,9 +66,9 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
 
   /// Ouvre le formulaire (F4) puis recharge (modification / suppression).
   Future<void> _openTask(TaskItem task) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => TaskFormScreen(task: task)),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => TaskFormScreen(task: task)));
     if (mounted) _load();
   }
 
@@ -158,7 +159,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      // Liste en skeleton : la forme du contenu s'affiche immédiatement.
+      return const SkeletonTaskList();
     }
     if (_error != null) {
       return ErrorState(message: _error!, onRetry: _load);
@@ -201,10 +203,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                 Text(
                   '${entry.value.length} tâche'
                   '${entry.value.length > 1 ? 's' : ''}',
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
                 ),
               ],
             ),

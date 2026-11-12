@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../shared/utils/date_utils.dart';
+import '../../../shared/widgets/skeleton.dart';
 
 /// Vue calendrier mensuelle (README §3.3) — navigation de mois réelle,
 /// jour sélectionné en cercle sombre, résumé du jour alimenté par l'API.
@@ -20,8 +21,8 @@ import '../../../shared/utils/date_utils.dart';
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key, required this.onOpenTimeline});
 
-  /// Ouvre la timeline sur la date sélectionnée (onglet Accueil).
-  final VoidCallback onOpenTimeline;
+  /// Ouvre la timeline sur la date du jour sélectionné (onglet Accueil).
+  final ValueChanged<DateTime> onOpenTimeline;
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -123,10 +124,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 children: [
                   IconButton(
                     onPressed: _previousMonth,
-                    icon: const Icon(
-                      Icons.chevron_left,
-                      color: AppColors.dark,
-                    ),
+                    icon: const Icon(Icons.chevron_left, color: AppColors.dark),
                   ),
                   Expanded(
                     child: Text(
@@ -201,9 +199,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           selected.year == _year &&
                           selected.month == _month &&
                           selected.day == day,
-                      onTap: () => context
-                          .read<TasksProvider>()
-                          .selectDate(DateTime(_year, _month, day)),
+                      onTap: () => context.read<TasksProvider>().selectDate(
+                        DateTime(_year, _month, day),
+                      ),
                     ),
                 ],
               ),
@@ -218,7 +216,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 count: state.dayTasks.length,
                 loading: state.dayLoading,
                 error: state.dayError,
-                onOpenTimeline: widget.onOpenTimeline,
+                onOpenTimeline: () => widget.onOpenTimeline(selected),
                 onRetry: state.reloadDay,
               ),
             ],
@@ -333,13 +331,14 @@ class _SelectedDaySummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 14,
+          // Chargement : petite barre skeleton plutôt que « Chargement… ».
+          if (loading)
+            const Skeleton(width: 150, height: 14, radius: 7)
+          else
+            Text(
+              subtitle,
+              style: const TextStyle(color: AppColors.muted, fontSize: 14),
             ),
-          ),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,

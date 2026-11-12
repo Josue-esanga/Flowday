@@ -154,10 +154,7 @@ class TasksProvider extends ChangeNotifier {
   Future<void> deleteTask(TaskItem task) async {
     await repository.deleteTask(task.id);
     _removeById(task.id);
-    _adjustStats(
-      totalDelta: -1,
-      completedDelta: task.completed ? -1 : 0,
-    );
+    _adjustStats(totalDelta: -1, completedDelta: task.completed ? -1 : 0);
     notifyListeners();
   }
 
@@ -199,6 +196,23 @@ class TasksProvider extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------
+  // Déconnexion — aucune donnée du compte précédent ne subsiste
+  // ---------------------------------------------------------------------
+  void reset() {
+    categories = [];
+    todayTasks = [];
+    yesterdayTasks = [];
+    dayTasks = [];
+    stats = null;
+    selectedDate = DateTime.now();
+    loading = false;
+    error = null;
+    dayLoading = false;
+    dayError = null;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------
   // Mises à jour locales des listes
   // ---------------------------------------------------------------------
   void _insert(TaskItem task) {
@@ -219,19 +233,19 @@ class TasksProvider extends ChangeNotifier {
 
   void _applyCompleted(String id, bool value) {
     List<TaskItem> apply(List<TaskItem> list) => [
-          for (final t in list)
-            t.id == id
-                ? TaskItem(
-                    id: t.id,
-                    title: t.title,
-                    description: t.description,
-                    date: t.date,
-                    time: t.time,
-                    category: t.category,
-                    completed: value,
-                  )
-                : t,
-        ];
+      for (final t in list)
+        t.id == id
+            ? TaskItem(
+                id: t.id,
+                title: t.title,
+                description: t.description,
+                date: t.date,
+                time: t.time,
+                category: t.category,
+                completed: value,
+              )
+            : t,
+    ];
     todayTasks = apply(todayTasks);
     yesterdayTasks = apply(yesterdayTasks);
     dayTasks = apply(dayTasks);

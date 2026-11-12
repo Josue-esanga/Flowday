@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'fakes/fake_task_repository.dart';
 
-void _noop() {}
+void _noop(DateTime _) {}
 
 void main() {
   final now = DateTime.now();
@@ -34,9 +34,7 @@ void main() {
           create: (_) =>
               TasksProvider(repository: FakeTaskRepository())..loadInitial(),
           child: const MaterialApp(
-            home: Scaffold(
-              body: CalendarScreen(onOpenTimeline: _noop),
-            ),
+            home: Scaffold(body: CalendarScreen(onOpenTimeline: _noop)),
           ),
         ),
       );
