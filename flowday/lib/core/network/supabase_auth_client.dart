@@ -288,8 +288,16 @@ class SupabaseAuthClient {
     Map<String, dynamic>? data,
     String? password,
   }) async {
+    final safeData = data == null ? null : Map<String, dynamic>.from(data);
+    final avatar = safeData?['avatar'];
+    if (avatar is String &&
+        (avatar.startsWith('data:') || utf8.encode(avatar).length > 2048)) {
+      // user_metadata is embedded in Supabase JWTs. Never send an inline
+      // image (or another oversized avatar value) back to GoTrue.
+      safeData!['avatar'] = null;
+    }
     final body = <String, dynamic>{
-      'data': ?data,
+      'data': ?safeData,
       if (password != null && password.isNotEmpty) 'password': password,
     };
     final user = await _send('PUT', 'user', body: body, bearer: token);

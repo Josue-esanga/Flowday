@@ -11,6 +11,7 @@ import '../../../core/ui/confirm_sign_out.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/avatar.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/wave_painter.dart';
 import 'profile_edit_sheet.dart';
 
 /// Profil (README §3.5) : identité du compte connecté (nom, e-mail,
@@ -18,164 +19,49 @@ import 'profile_edit_sheet.dart';
 /// /api/stats/`) et actions : modifier le profil, exporter les tâches,
 /// déconnexion.
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onOpenSettings});
+
+  final VoidCallback? onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     final auth = context.watch<AuthProvider>();
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
-      children: [
-        // Titre principal (même échelle que les autres écrans).
-        const Text(
-          'Profil',
-          style: TextStyle(
-            color: AppColors.text,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
+    return Container(
+      color: const Color(0xFFF8F8FC),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 18),
+        children: [
+          _ProfileTopArea(
+            topPadding: topPadding,
+            auth: auth,
+            name: _displayName(auth),
+            onEdit: () => _editProfile(context),
           ),
-        ),
-        const SizedBox(height: 26),
-
-        // Identité (compte réel — photo ou initiales).
-        Center(
-          child: Column(
-            children: [
-              _ProfileAvatar(radius: 44),
-              const SizedBox(height: 14),
-              Text(
-                _displayName(auth),
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                auth.email ?? '—',
-                style: const TextStyle(color: AppColors.muted, fontSize: 13),
-              ),
-            ],
+          Consumer<TasksProvider>(
+            builder: (context, state, _) => _ProfileStatistics(
+              stats: state.stats,
+              loading: state.loading,
+              error: state.error,
+              onRetry: state.retry,
+            ),
           ),
-        ),
-        const SizedBox(height: 28),
-
-        // Statistiques de productivité (API).
-        Consumer<TasksProvider>(
-          builder: (context, state, _) {
-            final stats = state.stats;
-            if (stats == null && state.loading) {
-              // Cartes de statistiques en skeleton.
-              return const Row(
-                children: [
-                  Expanded(child: SkeletonStatCard()),
-                  SizedBox(width: 12),
-                  Expanded(child: SkeletonStatCard()),
-                  SizedBox(width: 12),
-                  Expanded(child: SkeletonStatCard()),
-                ],
-              );
-            }
-            if (stats == null) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.cloud_off_outlined,
-                      size: 36,
-                      color: AppColors.muted,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      state.error ?? 'Statistiques indisponibles.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: state.retry,
-                      child: const Text(
-                        'Réessayer',
-                        style: TextStyle(color: AppColors.dark),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            final rate = stats.successRate;
-            final rateLabel = rate == rate.roundToDouble()
-                ? '${rate.round()}%'
-                : '${rate.toStringAsFixed(1)}%';
-            return Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    value: '${stats.completedTasks}',
-                    label: 'Tâches terminées',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(value: rateLabel, label: 'Taux de réussite'),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    value: '${stats.tasksThisWeek}',
-                    label: 'Cette semaine',
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-
-        // Actions.
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.itemBg,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.035),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+          _PersonalInformationCard(
+            name: _displayName(auth),
+            email: auth.email ?? '—',
+            phone: auth.phone,
+            location: auth.location,
+            onEdit: () => _editProfile(context),
           ),
-          child: Column(
-            children: [
-              _ProfileLink(
-                icon: Icons.edit_outlined,
-                label: 'Modifier le profil',
-                onTap: () => _editProfile(context),
-              ),
-              const Divider(color: AppColors.divider, height: 1),
-              _ProfileLink(
-                icon: Icons.download_outlined,
-                label: 'Exporter mes tâches',
-                onTap: () => _exportTasks(context),
-              ),
-              const Divider(color: AppColors.divider, height: 1),
-              _ProfileLink(
-                icon: Icons.logout,
-                label: 'Déconnexion',
-                danger: true,
-                onTap: () => _signOut(context),
-              ),
-            ],
+          _ProfileSettingsCard(
+            onOpenSettings: onOpenSettings,
+            onExport: () => _exportTasks(context),
           ),
-        ),
-      ],
+          _LogoutButton(onTap: () => _signOut(context)),
+          const SizedBox(height: 14),
+        ],
+      ),
     );
   }
 
@@ -281,22 +167,11 @@ class _ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    // Décodage partagé avec les en-têtes (`decodeAvatarImage`).
-    final photo = decodeAvatarImage(auth.avatar);
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: AppColors.lightCard,
-      backgroundImage: photo,
-      child: photo == null
-          ? Text(
-              _initials(auth),
-              style: TextStyle(
-                color: AppColors.dark,
-                fontSize: radius * 0.68,
-                fontWeight: FontWeight.w600,
-              ),
-            )
-          : null,
+    return Avatar(
+      initials: _initials(auth),
+      color: AppColors.avatarSkin,
+      size: radius * 2,
+      image: auth.avatar,
     );
   }
 
@@ -320,35 +195,127 @@ class _ProfileAvatar extends StatelessWidget {
 // COMPOSANTS
 // ======================================================================
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.value, required this.label});
+class _ProfileTopArea extends StatelessWidget {
+  const _ProfileTopArea({
+    required this.topPadding,
+    required this.auth,
+    required this.name,
+    required this.onEdit,
+  });
 
-  final String value;
-  final String label;
+  final double topPadding;
+  final AuthProvider auth;
+  final String name;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
-      decoration: BoxDecoration(
-        color: AppColors.lightCard,
-        borderRadius: BorderRadius.circular(26),
-      ),
-      child: Column(
+    final headerHeight = topPadding + 220;
+    return SizedBox(
+      height: topPadding + 337,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.dark,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: headerHeight,
+            child: ClipPath(
+              clipper: _ProfileHeaderClipper(),
+              child: ColoredBox(
+                color: AppColors.dark,
+                child: const CustomPaint(painter: WavePainter()),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted, fontSize: 11),
+          Positioned(
+            top: topPadding + 22,
+            left: 24,
+            child: const Text(
+              'Flowday',
+              style: TextStyle(
+                fontFamily: 'DancingScript',
+                fontVariations: [FontVariation('wght', 700)],
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Positioned(
+            top: topPadding + 91,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  _ProfileAvatar(radius: 60),
+                  Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    elevation: 4,
+                    child: InkWell(
+                      onTap: onEdit,
+                      customBorder: const CircleBorder(),
+                      child: const SizedBox(
+                        width: 42,
+                        height: 42,
+                        child: Icon(
+                          Icons.edit,
+                          color: AppColors.dark,
+                          size: 19,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: topPadding + 220,
+            left: 22,
+            right: 22,
+            child: Column(
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF171827),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.mail_outline,
+                      color: AppColors.muted,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        auth.email ?? '—',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -356,43 +323,395 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _ProfileLink extends StatelessWidget {
-  const _ProfileLink({
+class _ProfileHeaderClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, size.height * 0.78)
+      ..quadraticBezierTo(
+        size.width * 0.75,
+        size.height * 1.08,
+        size.width * 0.5,
+        size.height * 0.82,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.24,
+        size.height * 0.58,
+        0,
+        size.height * 0.9,
+      )
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _ProfileStatistics extends StatelessWidget {
+  const _ProfileStatistics({
+    required this.stats,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+  });
+
+  final ProfileStats? stats;
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (stats == null && loading) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(22, 0, 22, 22),
+        child: Row(
+          children: [
+            Expanded(child: SkeletonStatCard()),
+            SizedBox(width: 10),
+            Expanded(child: SkeletonStatCard()),
+            SizedBox(width: 10),
+            Expanded(child: SkeletonStatCard()),
+          ],
+        ),
+      );
+    }
+    if (stats == null) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(22, 0, 22, 22),
+        padding: const EdgeInsets.all(18),
+        decoration: _profileCardDecoration(),
+        child: Row(
+          children: [
+            const Icon(Icons.cloud_off_outlined, color: AppColors.muted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                error ?? 'Statistiques indisponibles.',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ),
+            TextButton(onPressed: onRetry, child: const Text('Réessayer')),
+          ],
+        ),
+      );
+    }
+
+    final rate = stats!.successRate;
+    final rateLabel = rate == rate.roundToDouble()
+        ? '${rate.round()}%'
+        : '${rate.toStringAsFixed(1)}%';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(22, 0, 22, 22),
+      padding: const EdgeInsets.symmetric(vertical: 19),
+      decoration: _profileCardDecoration(),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ProfileStatItem(
+              icon: Icons.task_alt_rounded,
+              value: '${stats!.completedTasks}',
+              label: 'Terminées',
+            ),
+          ),
+          const _ProfileVerticalDivider(),
+          Expanded(
+            child: _ProfileStatItem(
+              icon: Icons.star_border_rounded,
+              value: rateLabel,
+              label: 'Réussite',
+            ),
+          ),
+          const _ProfileVerticalDivider(),
+          Expanded(
+            child: _ProfileStatItem(
+              icon: Icons.bar_chart_rounded,
+              value: '${stats!.tasksThisWeek}',
+              label: 'Cette semaine',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileStatItem extends StatelessWidget {
+  const _ProfileStatItem({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 21, color: const Color(0xFF171827)),
+        const SizedBox(height: 7),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Color(0xFF171827),
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: AppColors.muted, fontSize: 10),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileVerticalDivider extends StatelessWidget {
+  const _ProfileVerticalDivider();
+
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 66, color: const Color(0xFFE7E8ED));
+}
+
+class _PersonalInformationCard extends StatelessWidget {
+  const _PersonalInformationCard({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.location,
+    required this.onEdit,
+  });
+
+  final String name;
+  final String email;
+  final String phone;
+  final String location;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+      padding: const EdgeInsets.all(20),
+      decoration: _profileCardDecoration(),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.person_outline,
+                color: Color(0xFF171827),
+                size: 23,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Informations personnelles',
+                  style: TextStyle(
+                    color: Color(0xFF171827),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 15),
+                label: const Text('Modifier'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.dark,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  textStyle: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          _ProfileInfoRow(
+            icon: Icons.badge_outlined,
+            label: 'Nom complet',
+            value: name,
+          ),
+          const SizedBox(height: 12),
+          _ProfileInfoRow(
+            icon: Icons.mail_outline,
+            label: 'Adresse e-mail',
+            value: email,
+          ),
+          const SizedBox(height: 12),
+          _ProfileInfoRow(
+            icon: Icons.phone_outlined,
+            label: 'Téléphone',
+            value: phone.isEmpty ? 'Non renseigné' : phone,
+          ),
+          const SizedBox(height: 12),
+          _ProfileInfoRow(
+            icon: Icons.location_on_outlined,
+            label: 'Localisation',
+            value: location.isEmpty ? 'Non renseignée' : location,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileInfoRow extends StatelessWidget {
+  const _ProfileInfoRow({
     required this.icon,
     required this.label,
-    required this.onTap,
-    this.danger = false,
+    required this.value,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
-  final bool danger;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.personal : AppColors.text;
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.muted),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 95,
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.muted, fontSize: 11),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              color: Color(0xFF343746),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileSettingsCard extends StatelessWidget {
+  const _ProfileSettingsCard({
+    required this.onOpenSettings,
+    required this.onExport,
+  });
+
+  final VoidCallback? onOpenSettings;
+  final VoidCallback onExport;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: _profileCardDecoration(),
+      child: Column(
+        children: [
+          if (onOpenSettings != null) ...[
+            _ProfileActionTile(
+              icon: Icons.settings_outlined,
+              title: 'Paramètres',
+              subtitle: 'Notifications, apparence et langue',
+              onTap: onOpenSettings!,
+            ),
+            const Divider(height: 1, indent: 58, color: AppColors.divider),
+          ],
+          _ProfileActionTile(
+            icon: Icons.download_outlined,
+            title: 'Exporter mes tâches',
+            subtitle: 'Copier une sauvegarde au format JSON',
+            onTap: onExport,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileActionTile extends StatelessWidget {
+  const _ProfileActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 13),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: danger ? color : AppColors.muted),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F1F5),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, color: AppColors.dark, size: 20),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFF171827),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Spacer(),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: danger ? color : AppColors.muted,
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 15,
+              color: AppColors.muted,
             ),
           ],
         ),
@@ -400,3 +719,44 @@ class _ProfileLink extends StatelessWidget {
     );
   }
 }
+
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(22, 4, 22, 0),
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 19),
+        label: const Text('Se déconnecter'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.dark,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(double.infinity, 56),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+}
+
+BoxDecoration _profileCardDecoration() => BoxDecoration(
+  color: Colors.white,
+  borderRadius: BorderRadius.circular(30),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.035),
+      blurRadius: 22,
+      offset: const Offset(0, 7),
+    ),
+  ],
+);

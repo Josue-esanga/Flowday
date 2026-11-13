@@ -89,6 +89,10 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   /// Nom complet du compte (vide s'il n'a pas encore été renseigné).
   String get fullName => metadata['full_name']?.toString().trim() ?? '';
 
+  String get phone => metadata['phone']?.toString().trim() ?? '';
+
+  String get location => metadata['location']?.toString().trim() ?? '';
+
   /// Photo de profil en data-URL (`data:image/…;base64,…`), ou `null`.
   String? get avatar => _localAvatar;
 

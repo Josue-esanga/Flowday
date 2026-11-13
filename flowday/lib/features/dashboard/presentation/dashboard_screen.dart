@@ -376,7 +376,7 @@ class _DashboardHeader extends StatelessWidget {
                         ? 'M'
                         : firstName[0].toUpperCase(),
                     color: AppColors.avatarSkin,
-                    size: 48,
+                    size: 56,
                     image: auth.avatar,
                   ),
                 ],

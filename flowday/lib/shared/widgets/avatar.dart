@@ -41,24 +41,43 @@ class Avatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: color,
+        color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: photo != null
-          ? Image(
-              image: photo,
-              fit: BoxFit.cover,
-              width: size,
-              height: size,
-              // Photo corrompue → retombe sur les initiales.
-              errorBuilder: (_, _, _) => _initials(),
-            )
-          : _initials(),
+      child: ClipOval(
+        child: SizedBox.expand(
+          child: photo != null
+              ? Image(
+                  image: photo,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.high,
+                  gaplessPlayback: true,
+                  // Photo corrompue → retombe sur les initiales.
+                  errorBuilder: (_, _, _) => _fallback(),
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) {
+                        return wasSynchronouslyLoaded || frame != null
+                            ? child
+                            : _fallback();
+                      },
+                )
+              : _fallback(),
+        ),
+      ),
     );
   }
+
+  Widget _fallback() => ColoredBox(color: color, child: _initials());
 
   Widget _initials() {
     return Center(

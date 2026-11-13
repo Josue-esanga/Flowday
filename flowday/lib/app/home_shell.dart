@@ -101,7 +101,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
       CalendarScreen(onOpenTimeline: _openTimelineFor),
       const SettingsScreen(),
-      const ProfileScreen(),
+      ProfileScreen(onOpenSettings: () => _onTabSelected(2)),
     ];
 
     return Scaffold(
