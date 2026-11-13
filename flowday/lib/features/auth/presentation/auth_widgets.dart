@@ -68,12 +68,14 @@ class FlowdayHeader extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Marque de l'application.
+              // Marque de l'application — cursive (Dancing Script).
               const Text(
                 'Flowday',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                  fontFamily: 'DancingScript',
+                  fontVariations: [FontVariation('wght', 700)],
+                  fontWeight: FontWeight.w700,
+                  fontSize: 27,
                   color: Colors.white,
                   letterSpacing: 0.4,
                 ),
@@ -177,7 +179,7 @@ class FloatingInputField extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: TextFormField(
         controller: controller,
         obscureText: obscureText,
@@ -213,11 +215,8 @@ class FloatingInputField extends StatelessWidget {
           ),
           prefixIcon: Icon(prefixIcon, color: AuthColors.ink, size: 20),
           suffixIcon: suffixIcon,
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-          errorStyle: const TextStyle(
-            fontSize: 12.5,
-            color: Color(0xFFD93025),
-          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 2),
+          errorStyle: const TextStyle(fontSize: 12.5, color: Color(0xFFD93025)),
           errorMaxLines: 2,
         ),
       ),
@@ -252,9 +251,7 @@ class PrimaryFlowButton extends StatelessWidget {
         elevation: 4,
         shadowColor: const Color(0x3317181C),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
       child: busy
           ? const SizedBox(
@@ -296,9 +293,7 @@ class DividerWithLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
-          child: Divider(color: AuthColors.border, thickness: 1),
-        ),
+        const Expanded(child: Divider(color: AuthColors.border, thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
@@ -311,9 +306,7 @@ class DividerWithLabel extends StatelessWidget {
             ),
           ),
         ),
-        const Expanded(
-          child: Divider(color: AuthColors.border, thickness: 1),
-        ),
+        const Expanded(child: Divider(color: AuthColors.border, thickness: 1)),
       ],
     );
   }
@@ -359,11 +352,7 @@ class SocialAuthButton extends StatelessWidget {
           children: [
             isGoogle
                 ? const _GoogleGIcon()
-                : const Icon(
-                    Icons.apple,
-                    color: AuthColors.ink,
-                    size: 24,
-                  ),
+                : const Icon(Icons.apple, color: AuthColors.ink, size: 24),
             const SizedBox(width: 10),
             Text(
               label,
@@ -474,11 +463,7 @@ class AuthErrorBox extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 18,
-            color: Color(0xFFD93025),
-          ),
+          const Icon(Icons.error_outline, size: 18, color: Color(0xFFD93025)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

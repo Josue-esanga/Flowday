@@ -148,8 +148,10 @@ class _Splash extends StatelessWidget {
             Text(
               'Flowday',
               style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
+                fontFamily: 'DancingScript',
+                fontVariations: [FontVariation('wght', 700)],
+                fontWeight: FontWeight.w700,
+                fontSize: 38,
                 color: AppColors.dark,
                 letterSpacing: 0.5,
               ),

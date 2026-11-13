@@ -337,7 +337,8 @@ class _DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    final firstName = _firstName(context.watch<AuthProvider>());
+    final auth = context.watch<AuthProvider>();
+    final firstName = _firstName(auth);
 
     return Container(
       height: 225 + topPadding,
@@ -361,17 +362,22 @@ class _DashboardHeader extends StatelessWidget {
                     child: Text(
                       'Hey $firstName !',
                       style: const TextStyle(
+                        fontFamily: 'DancingScript',
+                        fontVariations: [FontVariation('wght', 700)],
+                        fontWeight: FontWeight.w700,
                         color: Colors.white70,
-                        fontSize: 13,
+                        fontSize: 21,
                       ),
                     ),
                   ),
+                  // Photo de profil dynamique (initiales à défaut).
                   Avatar(
                     initials: firstName.isEmpty
                         ? 'M'
                         : firstName[0].toUpperCase(),
                     color: AppColors.avatarSkin,
                     size: 48,
+                    image: auth.avatar,
                   ),
                 ],
               ),

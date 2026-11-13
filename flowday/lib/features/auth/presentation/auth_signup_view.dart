@@ -129,150 +129,140 @@ class _SignUpViewState extends State<SignUpView> {
             ),
 
             // ----------------------------------------------------------
-            // Formulaire — largeur resserrée (gouttière 40, max 420)
+            // Formulaire — pleine largeur (gouttière 24)
             // ----------------------------------------------------------
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 28,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_error != null) ...[
+                    AuthErrorBox(text: _error!),
+                    const SizedBox(height: 18),
+                  ],
+
+                  // Nom complet.
+                  FloatingInputField(
+                    controller: _nameController,
+                    labelText: 'Nom complet',
+                    hintText: 'Alexandre Martin',
+                    prefixIcon: Icons.person_outline_rounded,
+                    enabled: !auth.busy,
+                    keyboardType: TextInputType.name,
+                    autofillHints: const [AutofillHints.name],
+                    textInputAction: TextInputAction.next,
+                    validator: _validateName,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  const SizedBox(height: 18),
+
+                  // E-mail.
+                  FloatingInputField(
+                    controller: _emailController,
+                    labelText: 'Adresse email',
+                    hintText: 'alexandre@exemple.com',
+                    prefixIcon: Icons.mail_outline_rounded,
+                    enabled: !auth.busy,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    textInputAction: TextInputAction.next,
+                    validator: _validateEmail,
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Mot de passe (œil de visibilité).
+                  FloatingInputField(
+                    controller: _passwordController,
+                    labelText: 'Mot de passe',
+                    hintText: 'Minimum 8 caractères',
+                    prefixIcon: Icons.lock_outline_rounded,
+                    enabled: !auth.busy,
+                    obscureText: _obscurePassword,
+                    autofillHints: const [AutofillHints.newPassword],
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                    validator: _validatePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: AuthColors.label,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Bouton primaire noir (texte + flèche).
+                  PrimaryFlowButton(
+                    text: 'Créer mon compte',
+                    busy: auth.busy,
+                    onPressed: _submit,
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Séparateur « OU S'INSCRIRE AVEC ».
+                  const DividerWithLabel(label: "OU S'INSCRIRE AVEC"),
+                  const SizedBox(height: 24),
+
+                  // Boutons sociaux Google / Apple.
+                  Row(
                     children: [
-                      if (_error != null) ...[
-                        AuthErrorBox(text: _error!),
-                        const SizedBox(height: 18),
-                      ],
-
-                      // Nom complet.
-                      FloatingInputField(
-                        controller: _nameController,
-                        labelText: 'Nom complet',
-                        hintText: 'Alexandre Martin',
-                        prefixIcon: Icons.person_outline_rounded,
-                        enabled: !auth.busy,
-                        keyboardType: TextInputType.name,
-                        autofillHints: const [AutofillHints.name],
-                        textInputAction: TextInputAction.next,
-                        validator: _validateName,
-                      ),
-                      const SizedBox(height: 18),
-
-                      // E-mail.
-                      FloatingInputField(
-                        controller: _emailController,
-                        labelText: 'Adresse email',
-                        hintText: 'alexandre@exemple.com',
-                        prefixIcon: Icons.mail_outline_rounded,
-                        enabled: !auth.busy,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        textInputAction: TextInputAction.next,
-                        validator: _validateEmail,
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Mot de passe (œil de visibilité).
-                      FloatingInputField(
-                        controller: _passwordController,
-                        labelText: 'Mot de passe',
-                        hintText: 'Minimum 8 caractères',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        enabled: !auth.busy,
-                        obscureText: _obscurePassword,
-                        autofillHints: const [AutofillHints.newPassword],
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _submit(),
-                        validator: _validatePassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: AuthColors.label,
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            );
-                          },
+                      Expanded(
+                        child: SocialAuthButton(
+                          label: 'Google',
+                          isGoogle: true,
+                          onTap: _socialUnavailable,
                         ),
                       ),
-                      const SizedBox(height: 24),
-
-                      // Bouton primaire noir (texte + flèche).
-                      PrimaryFlowButton(
-                        text: 'Créer mon compte',
-                        busy: auth.busy,
-                        onPressed: _submit,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: SocialAuthButton(
+                          label: 'Apple',
+                          isGoogle: false,
+                          onTap: _socialUnavailable,
+                        ),
                       ),
-                      const SizedBox(height: 28),
+                    ],
+                  ),
+                  const SizedBox(height: 36),
 
-                      // Séparateur « OU S'INSCRIRE AVEC ».
-                      const DividerWithLabel(label: "OU S'INSCRIRE AVEC"),
-                      const SizedBox(height: 24),
-
-                      // Boutons sociaux Google / Apple.
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SocialAuthButton(
-                              label: 'Google',
-                              isGoogle: true,
-                              onTap: _socialUnavailable,
-                            ),
+                  // Lien vers la connexion (jamais de débordement).
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Déjà un compte ? ',
+                          style: TextStyle(
+                            color: AuthColors.label,
+                            fontSize: 14,
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: SocialAuthButton(
-                              label: 'Apple',
-                              isGoogle: false,
-                              onTap: _socialUnavailable,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 36),
-
-                      // Lien vers la connexion (jamais de débordement).
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Déjà un compte ? ',
+                        ),
+                        GestureDetector(
+                          onTap: auth.busy ? null : widget.onSwitchToLogin,
+                          behavior: HitTestBehavior.opaque,
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              'Se connecter',
                               style: TextStyle(
-                                color: AuthColors.label,
+                                color: AuthColors.ink,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 14,
                               ),
                             ),
-                            GestureDetector(
-                              onTap: auth.busy ? null : widget.onSwitchToLogin,
-                              behavior: HitTestBehavior.opaque,
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 4),
-                                child: Text(
-                                  'Se connecter',
-                                  style: TextStyle(
-                                    color: AuthColors.ink,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
           ],

@@ -9,6 +9,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../core/ui/confirm_sign_out.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/widgets/avatar.dart';
 import '../../../shared/widgets/skeleton.dart';
 import 'profile_edit_sheet.dart';
 
@@ -27,6 +28,7 @@ class ProfileScreen extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
       children: [
+        // Titre principal (même échelle que les autres écrans).
         const Text(
           'Profil',
           style: TextStyle(
@@ -279,11 +281,13 @@ class _ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    // Décodage partagé avec les en-têtes (`decodeAvatarImage`).
+    final photo = decodeAvatarImage(auth.avatar);
     return CircleAvatar(
       radius: radius,
       backgroundColor: AppColors.lightCard,
-      backgroundImage: _decodeAvatar(auth.avatar),
-      child: _decodeAvatar(auth.avatar) == null
+      backgroundImage: photo,
+      child: photo == null
           ? Text(
               _initials(auth),
               style: TextStyle(
@@ -294,20 +298,6 @@ class _ProfileAvatar extends StatelessWidget {
             )
           : null,
     );
-  }
-
-  /// Data-URL (`data:image/…;base64,…`) → image ; `null` si absente ou
-  /// illisible.
-  static ImageProvider? _decodeAvatar(String? dataUrl) {
-    if (dataUrl == null) return null;
-    try {
-      final comma = dataUrl.indexOf(',');
-      final base64Part = comma >= 0 ? dataUrl.substring(comma + 1) : dataUrl;
-      final Uint8List bytes = base64Decode(base64Part);
-      return MemoryImage(bytes);
-    } catch (_) {
-      return null;
-    }
   }
 
   static String _initials(AuthProvider auth) {

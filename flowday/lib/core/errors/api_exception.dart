@@ -93,6 +93,10 @@ class ApiException implements Exception {
                 'introuvable.';
           case '23505':
             return 'Cet enregistrement existe déjà.';
+          case '22001':
+            // `varchar(n)` dépassé (titre de tâche) → message actionnable.
+            return 'Saisie trop longue : réduisez la taille de vos '
+                'informations, puis réessayez.';
           default:
             return 'Vérifiez les informations saisies, puis réessayez.';
         }

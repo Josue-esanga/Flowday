@@ -51,6 +51,8 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
        persist = false,
        _status = AuthStatus.authenticated {
     this.metadata = metadata ?? const {};
+    final avatar = this.metadata['avatar'];
+    if (avatar is String && avatar.isNotEmpty) _localAvatar = avatar;
     _session = AuthSession(
       accessToken: 'test-access-token',
       refreshToken: 'test-refresh-token',
@@ -77,17 +79,18 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   /// Adresse e-mail du compte connecté.
   String? email;
 
-  /// Métadonnées du compte (`full_name`, `avatar` en base64…).
+  /// Métadonnées légères du compte (nom, etc.). La photo reste locale afin
+  /// de ne pas l'embarquer dans chaque JWT Supabase.
   Map<String, dynamic> metadata = const {};
+
+  String? _localAvatar;
+  bool _needsAvatarCleanup = false;
 
   /// Nom complet du compte (vide s'il n'a pas encore été renseigné).
   String get fullName => metadata['full_name']?.toString().trim() ?? '';
 
   /// Photo de profil en data-URL (`data:image/…;base64,…`), ou `null`.
-  String? get avatar {
-    final value = metadata['avatar'];
-    return value is String && value.isNotEmpty ? value : null;
-  }
+  String? get avatar => _localAvatar;
 
   /// Une opération (connexion/inscription) est en cours.
   bool busy = false;
@@ -130,7 +133,16 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
         }
         return;
       }
-      metadata = _decodeMeta(storedMeta);
+      final restoredMetadata = _decodeMeta(storedMeta);
+      final storedAvatar =
+          prefs.getString(_avatarKey(storedEmail)) ??
+          prefs.getString('fd.profile.avatar');
+      final oldAvatar = restoredMetadata.remove('avatar');
+      _localAvatar =
+          storedAvatar ??
+          (oldAvatar is String && oldAvatar.isNotEmpty ? oldAvatar : null);
+      _needsAvatarCleanup = oldAvatar is String && oldAvatar.isNotEmpty;
+      metadata = restoredMetadata;
       final expiresAt = expiresAtMs == null
           ? DateTime.now()
           : DateTime.fromMillisecondsSinceEpoch(expiresAtMs);
@@ -162,6 +174,8 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
           }
         }
       }
+      await _persistSession();
+      await _cleanupRemoteAvatar();
     } catch (_) {
       // Plugin de stockage indisponible (tests) → connexion requise.
       if (_status != AuthStatus.authenticated) {
@@ -181,17 +195,19 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
         final session = await _client.signIn(email: email, password: password);
         _session = _withEmail(session, email);
         this.email = email;
-        metadata = session.metadata;
+        await _loadLocalAvatar(email);
+        _acceptMetadata(session.metadata);
         if (metadata.isEmpty) {
           // La réponse n'a pas inclus `user` : on récupère le profil.
           try {
-            metadata = await _client.fetchUser(session.accessToken);
+            _acceptMetadata(await _client.fetchUser(session.accessToken));
           } catch (_) {
             // Profil non critique : la session reste valide.
           }
         }
         _status = AuthStatus.authenticated;
         await _persistSession();
+        await _cleanupRemoteAvatar();
       });
 
   /// Inscription ; renvoie `null` en cas de succès (session ouverte ou
@@ -220,11 +236,13 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       // Session immédiate (confirmation désactivée) : aucun lien attendu.
       _session = _withEmail(result.session!, email);
       this.email = email;
-      metadata = result.session!.metadata;
+      await _loadLocalAvatar(email);
+      _acceptMetadata(result.session!.metadata);
       _status = AuthStatus.authenticated;
       _pkceVerifier = null;
       await _clearPkce();
       await _persistSession();
+      await _cleanupRemoteAvatar();
     } else {
       confirmationSent = true;
       this.email = email;
@@ -254,10 +272,11 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       );
       _session = _withEmail(session, email);
       email = _session!.email;
-      metadata = session.metadata;
+      await _loadLocalAvatar(email);
+      _acceptMetadata(session.metadata);
       if (metadata.isEmpty) {
         try {
-          metadata = await _client.fetchUser(session.accessToken);
+          _acceptMetadata(await _client.fetchUser(session.accessToken));
         } catch (_) {
           // Profil non critique : la session reste valide.
         }
@@ -266,6 +285,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       _pkceVerifier = null;
       await _clearPkce();
       await _persistSession();
+      await _cleanupRemoteAvatar();
       notice = 'Votre adresse e-mail est confirmée. Bienvenue !';
       return null;
     } on ApiException catch (e) {
@@ -326,15 +346,31 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
     }
     return _runAuth(() async {
       final session = _session!;
-      // GoTrue remplace `user_metadata` : on envoie le dictionnaire
-      // complet (existant + modifications).
-      final merged = <String, dynamic>{...this.metadata, ...?metadata};
+      final changes = <String, dynamic>{...?metadata};
+      if (changes.containsKey('avatar')) {
+        final image = changes.remove('avatar');
+        _localAvatar = image is String && image.isNotEmpty ? image : null;
+        _needsAvatarCleanup = true;
+      }
+      final merged = <String, dynamic>{...this.metadata, ...changes};
+      if (_needsAvatarCleanup) merged['avatar'] = null;
       final updated = await _client.updateUser(
         token: session.accessToken,
         data: merged.isEmpty ? null : merged,
         password: newPassword,
       );
-      this.metadata = updated.isNotEmpty ? updated : merged;
+      _acceptMetadata(updated.isNotEmpty ? updated : merged);
+      if (_needsAvatarCleanup) {
+        try {
+          final renewed = await _client.refresh(session.refreshToken);
+          _session = _withEmail(renewed, session.email);
+          if (renewed.metadata.isNotEmpty) _acceptMetadata(renewed.metadata);
+          _needsAvatarCleanup = false;
+        } catch (_) {
+          // Le profil est corrigé ; le prochain renouvellement régénérera
+          // le jeton léger même si celui-ci ne peut pas l'être maintenant.
+        }
+      }
       await _persistSession();
     });
   }
@@ -414,6 +450,52 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
     email: session.email.isNotEmpty ? session.email : (fallback ?? email ?? ''),
   );
 
+  void _acceptMetadata(Map<String, dynamic> value) {
+    final clean = Map<String, dynamic>.from(value);
+    final remoteAvatar = clean.remove('avatar');
+    if (remoteAvatar is String && remoteAvatar.isNotEmpty) {
+      _localAvatar ??= remoteAvatar;
+      _needsAvatarCleanup = true;
+    }
+    metadata = clean;
+  }
+
+  Future<void> _loadLocalAvatar(String? accountEmail) async {
+    if (_localAvatar != null || !persist || accountEmail == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _localAvatar = prefs.getString(_avatarKey(accountEmail));
+    } catch (_) {
+      // L'image est facultative ; le reste du profil reste disponible.
+    }
+  }
+
+  String _avatarKey(String accountEmail) =>
+      'fd.profile.avatar.${Uri.encodeComponent(accountEmail.toLowerCase())}';
+
+  /// Migre une ancienne photo data-URL hors de `user_metadata`. Supabase
+  /// inclut ces métadonnées dans le JWT : une image de 40 Ko produisait un
+  /// jeton de 55 Ko que PostgREST rejetait avec HTTP 400.
+  Future<void> _cleanupRemoteAvatar() async {
+    final session = _session;
+    if (!_needsAvatarCleanup || session == null) return;
+    try {
+      final updated = await _client.updateUser(
+        token: session.accessToken,
+        data: const {'avatar': null},
+      );
+      _acceptMetadata(updated);
+      final renewed = await _client.refresh(session.refreshToken);
+      _session = _withEmail(renewed, session.email);
+      if (renewed.metadata.isNotEmpty) _acceptMetadata(renewed.metadata);
+      _needsAvatarCleanup = false;
+    } catch (_) {
+      // La connexion reste utilisable ; une prochaine ouverture ou
+      // modification du profil retentera la migration.
+    }
+    await _persistSession();
+  }
+
   Future<void> _persistSession() async {
     if (!persist || _session == null) return;
     try {
@@ -422,6 +504,12 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       await prefs.setString('fd.session.refresh', _session!.refreshToken);
       await prefs.setString('fd.session.email', _session!.email);
       await prefs.setString('fd.session.meta', jsonEncode(metadata));
+      if (_localAvatar == null) {
+        await prefs.remove(_avatarKey(_session!.email));
+      } else {
+        await prefs.setString(_avatarKey(_session!.email), _localAvatar!);
+        await prefs.remove('fd.profile.avatar');
+      }
       await prefs.setInt(
         'fd.session.expires',
         _session!.expiresAt.millisecondsSinceEpoch,
@@ -439,6 +527,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       await prefs.remove('fd.session.refresh');
       await prefs.remove('fd.session.email');
       await prefs.remove('fd.session.meta');
+      _localAvatar = null;
       await prefs.remove('fd.session.expires');
     } catch (_) {
       // Rien à nettoyer.

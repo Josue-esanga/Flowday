@@ -26,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListView(
       padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
       children: [
+        // Titre principal (même échelle que les autres écrans).
         const Text(
           'Paramètres',
           style: TextStyle(

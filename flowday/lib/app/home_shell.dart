@@ -58,22 +58,17 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
-  /// Clic sur une tâche (dashboard) : coche / décoche (F6) avec retour
-  /// visuel via un message discret.
+  /// Clic sur une tâche (dashboard) : coche / décoche (F6) **sans
+  /// message au succès** (fluidité perçue) — seule une erreur d'appel
+  /// serveur est signalée.
   Future<void> _toggleTask(TaskItem task) async {
     final ok = await context.read<TasksProvider>().toggle(task);
-    if (!mounted) return;
+    if (!mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      const SnackBar(
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-        content: Text(
-          !ok
-              ? 'Action impossible pour le moment. Réessayez.'
-              : task.completed
-              ? '« ${task.title} » réactivée.'
-              : '« ${task.title} » marquée comme terminée.',
-        ),
+        duration: Duration(seconds: 2),
+        content: Text('Action impossible pour le moment. Réessayez.'),
       ),
     );
   }

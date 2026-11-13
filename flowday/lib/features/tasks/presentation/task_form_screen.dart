@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -236,6 +237,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 const _FieldLabel('Title *'),
                 TextField(
                   controller: _title,
+                  // Colonne `title varchar(200)` : au-delà, PostgREST
+                  // renvoie 400 (`22001`) — on bloque la saisie.
+                  maxLength: 200,
+                  maxLengthEnforcement: MaxLengthEnforcement.enforced,
                   onChanged: (_) {
                     if (_titleError != null) {
                       setState(() => _titleError = null);

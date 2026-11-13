@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../errors/api_exception.dart';
@@ -128,7 +129,7 @@ class SupabaseRestClient {
           );
         }
       }
-      return _decode(response);
+      return _decode(response, method: method, uri: uri);
     } on TimeoutException {
       throw const ApiException(statusCode: 0, message: _networkMessage);
     } on ApiException {
@@ -139,8 +140,20 @@ class SupabaseRestClient {
   }
 
   /// Réponse 2xx → liste de lignes (vide si corps vide).
-  List<Map<String, dynamic>> _decode(http.Response response) {
+  List<Map<String, dynamic>> _decode(
+    http.Response response, {
+    required String method,
+    required Uri uri,
+  }) {
     if (response.statusCode >= 400) {
+      debugPrint('Flowday [rest] $method $uri');
+      final accessToken = tokens?.accessToken;
+      debugPrint(
+        'Flowday [rest] tokenPresent=${accessToken != null} '
+        'jwtParts=${accessToken?.split('.').length ?? 0} '
+        'contentType=${response.headers['content-type']} '
+        'requestId=${response.headers['sb-request-id']}',
+      );
       final error = ApiException.fromBody(
         response.statusCode,
         _errorBody(response.body),
@@ -164,9 +177,17 @@ class SupabaseRestClient {
         final decoded = jsonDecode(body);
         if (decoded is Map<String, dynamic>) return decoded;
       } catch (_) {
-        // corps non JSON : on retombe sur le message générique ci-dessous
+        // Un proxy ou une passerelle peut renvoyer du texte/HTML au lieu
+        // du JSON PostgREST. Conserver un extrait pour le diagnostic local.
       }
     }
-    return const {'message': 'Erreur serveur'};
+    final excerpt = body.trim();
+    return {
+      'message': excerpt.isEmpty
+          ? 'Réponse HTTP sans corps exploitable'
+          : excerpt.length <= 500
+          ? excerpt
+          : '${excerpt.substring(0, 500)}…',
+    };
   }
 }

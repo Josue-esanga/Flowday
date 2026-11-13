@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/utils/date_utils.dart';
@@ -46,6 +47,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<TasksProvider>();
+    final auth = context.watch<AuthProvider>();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selected = DateTime(
@@ -98,10 +100,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   ],
                 ),
               ),
-              const Avatar(
-                initials: 'M',
+              // Photo de profil dynamique (initiales à défaut).
+              Avatar(
+                initials: auth.fullName.trim().isEmpty
+                    ? 'M'
+                    : auth.fullName.trim()[0].toUpperCase(),
                 color: AppColors.avatarSkin,
                 size: 50,
+                image: auth.avatar,
               ),
             ],
           ),

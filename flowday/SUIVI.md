@@ -738,7 +738,7 @@ temporaires (login + inscription, supprimées après contrôle).
 - **Formulaires resserrés** : gouttière horizontale 24 → **40** et
   largeur bornée à **420 max centrée** (les champs paraissent moins
   larges sur téléphone, sur tablette/desktop le formulaire reste
-  centré).
+  centré). *→ réverti en Itération 7 (gouttière 24, sans borne).*
 - **Splash en fond blanc** : `_Splash` sur `Colors.white`, le logo
   (carte anthracite) reste **toujours en noir**.
 - **Icônes/logo unifiés sur l'univers dashboard** : fond du logo passé
@@ -797,6 +797,95 @@ temporaires (login + inscription, supprimées après contrôle).
 - **Limite connue** : la réinitialisation de mot de passe (`recover`)
   n'a pas d'écran in-app — son lien reste non traité (hors périmètre,
   à traiter avec un écran « nouveau mot de passe »).
+
+Vérifications : `flutter analyze` **0 problème**, `flutter test`
+**24 tests OK + 2 skip (live)**.
+
+---
+
+## 🎨 Itération 6 — nouveau logo, titres cursive, interactions allégées
+
+Demandes regroupées (12 nov.) :
+
+- **Nouveau logo Flowday** (maquette fournie) : `flowday_logo.dart`
+  réécrit — carte noire dégradée arrondie (#292930 → #17171D → #08080D)
+  avec ombre portée, 15 vagues #A5A5B9 à 18 %, « F » blanc sculptural,
+  coche et badge calendrier. Adapté à nos conventions :
+  `withValues(alpha:)`, plus les paramètres `framed` (carte arrondie en
+  usage applicatif / plein cadre pour les icônes) et `symbolScale`
+  (0.56 = zone sûre des icônes maskables). Le splash utilise ce logo
+  sur fond **blanc** (Flutter + lancement natif Android/iOS déjà blancs).
+- **Icônes régénérées (33 fichiers)** : masters 1024 px rendus par un
+  test one-off (supprimé après exécution), puis Android (5 dpi), iOS
+  (15, RGB opaque, tailles base × facteur), macOS (7, coins arrondis
+  22,5 %), web (5, dont 2 maskables sur le master à échelle réduite) et
+  Windows (ICO 7 tailles). Contrôles : coin du master (41,41,48) =
+  dégradé #292930, symbole hors zone sûre confirmé sur le maskable.
+- **Titres principaux en Dancing Script** (police re-téléchargée,
+  variable, déclarée dans `pubspec.yaml`) via `fontVariations wght 700` :
+  titre des écrans d'authentification (31 px), héros du dashboard
+  (« Let's find your best day! », 29 px), titre de la timeline
+  (« Today »/jour, 42 px), « Profil » et « Paramètres » (38 px). La
+  marque « Flowday » (en-tête d'auth + splash) reste en Poppins
+  géométrique. Vérifié par captures d'écrans (polices réelles chargées
+  dans le test).
+- **Case à cocher des tâches** : plus de message « … marquée comme
+  terminée » / « … réactivée » à chaque bascule (fluidité perçue) —
+  seul un échec serveur affiche encore « Action impossible pour le
+  moment. Réessayez. » (`home_shell._toggleTask`).
+- **Dialogue « Se déconnecter ? »** simplifié : la **croix** tient lieu
+  de bouton « Annuler » (supprimé) et un **seul bouton** rouge
+  « Se déconnecter » pleine largeur (flex, avec icône) termine
+  l'action (`confirm_sign_out.dart`).
+- **En-têtes dynamiques (photo de profil)** : l'avatar du dashboard et
+  de la timeline (jusque-là figé sur les initiales / « M ») affiche
+  désormais la photo du compte (`auth.avatar`, data-URL base64) avec
+  repli automatique sur les initiales — `Avatar` enrichi du paramètre
+  `image` et `decodeAvatarImage()` partagé (le profil réutilise cette
+  fonction ; double décodage supprimé).
+
+Vérifications : `flutter analyze` **0 problème**, `flutter test`
+**24 tests OK + 2 skip (live)** ; captures one-off des 8 écrans
+(splash blanc + nouveau logo, titres cursive, dialogue) analysées puis
+supprimées avec leur test.
+
+---
+
+## 🎨 Itération 7 — erreur de saisie, champs, polices, avatar
+
+Demandes regroupées (12 nov.) :
+
+- **Erreur « Vérifiez les informations saisies, puis réessayez. »** :
+  message **générique** émis uniquement par `ApiException._genericMessage`
+  (réponse 400/422 dont aucun code n'est reconnu). Toute la surface
+  atteignable a été éprouvée (JWT malformé, uuid/dates invalides,
+  colonnes NOT NULL, `auth.uid()`, `maxLength` absent, `reminder` jamais
+  envoyé…) : le **seul 400 déclenchable depuis l'app est un `title` de
+  plus de 200 caractères** — `planning_task.title` est `varchar(200)` →
+  SQLSTATE `22001` → `case default` du `switch` → message générique.
+  Corrigé : `22001` mappe désormais « Saisie trop longue : réduisez la
+  taille de vos informations, puis réessayez. », et le champ titre impose
+  `maxLength: 200` avec `MaxLengthEnforcement.enforced` (le défaut varie
+  par plateforme : Android/Windows l'applique, le web tronque après
+  composition — d'où l'import `package:flutter/services.dart`).
+- **Champs de saisie** : gouttière ramenée à **24** (suppression du
+  `Center` + `ConstrainedBox(maxWidth: 420)` — la demande de réduction
+  avait été mal formulée) et **hauteur réduite** : conteneur `FlowField`
+  `vertical: 6 → 4`, `contentPadding` `vertical: 4 → 2`.
+- **Dancing Script cantonné** : uniquement la marque « Flowday »
+  (en-tête d'auth 27 px, splash 38 px) et la salutation du dashboard
+  (« Hey … ! », 21 px, `white70`). Les 5 titres passés en cursive à
+  l'itération 6 reviennent en Poppins **bold** : titre d'auth (25),
+  héros du dashboard (25), « Today » (39), « Profil » (32),
+  « Paramètres » (32).
+- **Avatar du profil** : contrôle à blanc par rendu pixel (test one-off,
+  supprimé après exécution) — `CircleAvatar` peint bien un **cercle
+  centré** (décor `BoxShape.circle`, photo en `BoxFit.cover`, initiale
+  centrée par `Center`), et c'est identique au `git show HEAD:` : la
+  photo du compte (JPEG 512 × 512) remplit tout le disque. Aucun défaut
+  de rendu reproductible — si l'aspect « carré » persiste après
+  reconstruction, c'est la composition de la photo (visage décentré à
+  gauche) ou un binaire ancien ; une capture d'écran reste demandée.
 
 Vérifications : `flutter analyze` **0 problème**, `flutter test`
 **24 tests OK + 2 skip (live)**.

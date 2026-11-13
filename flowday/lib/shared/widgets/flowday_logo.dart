@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Logo Flowday — marque officielle de l'application (carré sombre
-/// arrondi `#1E1E22`, vagues subtiles, halo radial et symbole « F »
-/// sculptural avec coche et badge calendrier), dessiné en pur
+/// Logo Flowday — marque officielle de l'application : carte noire
+/// dégradée arrondie, lignes d'ondes décoratives, « F » blanc
+/// sculptural avec coche et badge calendrier, dessiné en pur
 /// `CustomPaint` d'après la maquette fournie.
 ///
 /// Utilisé au démarrage de l'app (`_Splash`) et comme source de
@@ -12,258 +12,339 @@ class FlowdayLogo extends StatelessWidget {
     super.key,
     this.size = 200,
     this.framed = true,
-    this.symbolScale = 0.72,
-    this.shadow = true,
+    this.symbolScale = 1.0,
   });
 
   /// Côté du carré.
   final double size;
 
-  /// `true` : carré arrondi avec ombre (rendu applicatif) ;
-  /// `false` : plein cadre sans arrondi ni ombre (génération d'icônes).
+  /// `true` : carte arrondie avec ombre portée (rendu applicatif) ;
+  /// `false` : plein cadre sans arrondi ni ombre (génération d'icônes,
+  /// le masque étant appliqué par la plateforme cible).
   final bool framed;
 
-  /// Taille du symbole par rapport au carré — 0.72 (maquette) ou
-  /// 0.56 (zone sûre des icônes « maskables »).
+  /// Échelle du symbole (F + calendrier) par rapport à la maquette —
+  /// 1.0 (design d'origine) ou 0.56 (zone sûre des icônes « maskables »).
   final double symbolScale;
-
-  /// Ombre portée (seulement si [framed]).
-  final bool shadow;
 
   @override
   Widget build(BuildContext context) {
-    final content = Stack(
-      alignment: Alignment.center,
-      children: [
-        // Arrière-plan à vagues texturées.
-        Positioned.fill(
-          child: CustomPaint(painter: BackgroundWavesPainter()),
-        ),
-        // Dégradé radial d'ambiance.
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0, -0.2),
-                radius: 0.9,
-                colors: [
-                  Colors.white.withValues(alpha: 0.06),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-        // Éléments du logo (« F » stylisé, coche & calendrier).
-        SizedBox(
-          width: size * symbolScale,
-          height: size * symbolScale,
-          child: const CustomPaint(painter: StylizedFLogoPainter()),
-        ),
-      ],
-    );
-
-    if (!framed) {
-      // Plein cadre : fond uniforme, coins carrés (le masque est appliqué
-      // par la plateforme cible).
-      return SizedBox(
-        width: size,
-        height: size,
-        child: ColoredBox(color: const Color(0xFF1E1E22), child: content),
-      );
-    }
-
-    final radius = BorderRadius.circular(size * 0.225);
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E22),
-        borderRadius: radius,
-        boxShadow: [
-          if (shadow)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.55),
-              blurRadius: size * 0.12,
-              offset: Offset(0, size * 0.05),
-            ),
-        ],
+      child: CustomPaint(
+        painter: FlowdayLogoPainter(framed: framed, symbolScale: symbolScale),
       ),
-      child: ClipRRect(borderRadius: radius, child: content),
     );
   }
 }
 
-/// Dessine les lignes d'ondes texturées fluides en arrière-plan sombre.
-class BackgroundWavesPainter extends CustomPainter {
-  const BackgroundWavesPainter();
+class FlowdayLogoPainter extends CustomPainter {
+  const FlowdayLogoPainter({this.framed = true, this.symbolScale = 1.0});
+
+  /// Voir [FlowdayLogo.framed].
+  final bool framed;
+
+  /// Voir [FlowdayLogo.symbolScale].
+  final double symbolScale;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final wavePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.04)
-      ..style = PaintingStyle.stroke
-      // Trait « 1 px » à l'échelle de référence (280 px) : le tracé reste
-      // vectoriel quelle que soit la taille de rendu.
-      ..strokeWidth = size.width / 280;
+    final double s = size.width / 500;
 
-    for (int i = 0; i < 24; i++) {
-      final path = Path();
-      final double yOffset = size.height * 0.15 + (i * size.height * 0.035);
-      path.moveTo(0, yOffset);
-      path.cubicTo(
-        size.width * 0.3,
-        yOffset - size.height * 0.15,
-        size.width * 0.7,
-        yOffset + size.height * 0.15,
-        size.width,
-        yOffset,
+    canvas.save();
+    canvas.scale(s);
+
+    // ==========================================
+    // 1. FOND NOIR ARRONDI (ou plein cadre pour les icônes)
+    // ==========================================
+    final background = framed
+        ? RRect.fromRectAndRadius(
+            const Rect.fromLTWH(5, 5, 490, 490),
+            const Radius.circular(65),
+          )
+        : RRect.fromRectAndRadius(
+            const Rect.fromLTWH(0, 0, 500, 500),
+            Radius.zero,
+          );
+
+    if (framed) {
+      canvas.drawRRect(
+        background.shift(const Offset(0, 8)),
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15),
       );
+    }
+
+    canvas.drawRRect(
+      background,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF292930),
+            Color(0xFF17171D),
+            Color(0xFF08080D),
+          ],
+        ).createShader(const Rect.fromLTWH(5, 5, 490, 490)),
+    );
+
+    canvas.save();
+    canvas.clipRRect(background);
+
+    // ==========================================
+    // 2. VAGUES DECORATIVES
+    // ==========================================
+    final wavePaint = Paint()
+      ..color = const Color(0xFFA5A5B9).withValues(alpha: 0.18)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+
+    for (int i = 0; i < 15; i++) {
+      final path = Path();
+      final y = 45.0 + i * 16;
+
+      path.moveTo(0, y + 35);
+
+      path.cubicTo(
+        100,
+        y - 55,
+        160,
+        y - 45,
+        235,
+        y + 30,
+      );
+
+      path.cubicTo(
+        310,
+        y + 110,
+        380,
+        y + 75,
+        500,
+        y + 15,
+      );
+
       canvas.drawPath(path, wavePaint);
     }
-  }
 
-  @override
-  bool shouldRepaint(covariant BackgroundWavesPainter oldDelegate) => false;
-}
+    // ==========================================
+    // Symbole (F + calendrier) — échelle de zone sûre si demandée
+    // ==========================================
+    canvas.save();
+    if (symbolScale != 1.0) {
+      canvas
+        ..translate(250, 250)
+        ..scale(symbolScale)
+        ..translate(-250, -250);
+    }
 
-/// Peintre vectoriel du symbole central (« F » sculptural, coche et
-/// badge calendrier).
-class StylizedFLogoPainter extends CustomPainter {
-  const StylizedFLogoPainter();
+    // ==========================================
+    // 3. FORME PRINCIPALE DU F
+    // ==========================================
+    final fPath = Path()
+      // Partie supérieure
+      ..moveTo(138, 151)
+      ..cubicTo(138, 105, 168, 76, 215, 76)
+      ..lineTo(375, 76)
+      ..cubicTo(375, 106, 350, 133, 319, 133)
+      ..lineTo(243, 133)
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
+      // Courbe intérieure
+      ..cubicTo(216, 133, 203, 151, 203, 178)
+      ..lineTo(203, 283)
 
-    // Ombre portée sous le logo principal (échelle de référence : le
-    // painter est exécuté dans une boîte de 0.72 × 280 ≈ 201 px).
-    final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.4)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.06);
+      // Partie inférieure du F
+      ..cubicTo(203, 332, 181, 363, 138, 381)
+      ..lineTo(138, 151)
+      ..close();
 
-    // --- 1. Forme du 'F' stylisé ruban blanc/argenté ---
-    final fPath = Path();
-    fPath.moveTo(w * 0.26, h * 0.82);
-    // Tige gauche montante
-    fPath.cubicTo(w * 0.14, h * 0.65, w * 0.15, h * 0.28, w * 0.38, h * 0.16);
-    // Barre supérieure droite
-    fPath.cubicTo(w * 0.52, h * 0.10, w * 0.85, h * 0.14, w * 0.88, h * 0.18);
-    fPath.cubicTo(w * 0.89, h * 0.28, w * 0.58, h * 0.28, w * 0.48, h * 0.28);
-    // Intérieur vers le badge
-    fPath.cubicTo(w * 0.40, h * 0.28, w * 0.36, h * 0.38, w * 0.36, h * 0.52);
-    // Barre médiane
-    fPath.lineTo(w * 0.76, h * 0.52);
-    fPath.cubicTo(w * 0.82, h * 0.52, w * 0.82, h * 0.64, w * 0.76, h * 0.64);
-    fPath.lineTo(w * 0.44, h * 0.64);
-    fPath.cubicTo(w * 0.44, h * 0.74, w * 0.36, h * 0.82, w * 0.26, h * 0.82);
-    fPath.close();
-
-    // Ombre sous le F
-    canvas.drawPath(fPath.shift(Offset(0, h * 0.02)), shadowPaint);
-
-    // Rendu du F avec dégradé subtil métallique
-    final fGradient = const LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        Color(0xFFFFFFFF),
-        Color(0xFFF0F0F5),
-        Color(0xFFD8D9E0),
-      ],
-      stops: [0.0, 0.45, 1.0],
-    ).createShader(Rect.fromLTWH(0, 0, w, h));
-
-    final fPaint = Paint()
-      ..shader = fGradient
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(fPath, fPaint);
-
-    // --- 2. Zone sombre intérieure de la bulle / coche ---
-    final darkPocketRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.34, h * 0.28, w * 0.42, h * 0.30),
-      Radius.circular(w * 0.08),
-    );
-    final darkPocketPaint = Paint()..color = const Color(0xFF1D1D21);
-    canvas.drawRRect(darkPocketRect, darkPocketPaint);
-
-    // Coche (Checkmark) blanche
-    final checkPath = Path();
-    checkPath.moveTo(w * 0.44, h * 0.44);
-    checkPath.lineTo(w * 0.52, h * 0.52);
-    checkPath.lineTo(w * 0.66, h * 0.38);
-
-    final checkPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = w * 0.06;
-    canvas.drawPath(checkPath, checkPaint);
-
-    // --- 3. Badge Calendrier au premier plan ---
-    final calRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.24, h * 0.52, w * 0.34, h * 0.34),
-      Radius.circular(w * 0.075),
+    // Ombre du F
+    canvas.drawPath(
+      fPath.shift(const Offset(5, 7)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.5)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
 
-    // Ombre du calendrier
-    canvas.drawRRect(calRect.shift(Offset(0, h * 0.015)), shadowPaint);
-
-    // Corps du calendrier
-    final calBgPaint = Paint()..color = const Color(0xFF23242A);
-    canvas.drawRRect(calRect, calBgPaint);
-
-    // Tête / bandeau supérieur du calendrier
-    final calHeader = RRect.fromRectAndCorners(
-      Rect.fromLTWH(w * 0.24, h * 0.52, w * 0.34, h * 0.09),
-      topLeft: Radius.circular(w * 0.075),
-      topRight: Radius.circular(w * 0.075),
+    // Dégradé principal
+    canvas.drawPath(
+      fPath,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF2F0FF), Color(0xFFDAD8ED)],
+        ).createShader(const Rect.fromLTWH(130, 70, 260, 320)),
     );
-    final calHeaderPaint = Paint()..color = const Color(0xFF32343E);
-    canvas.drawRRect(calHeader, calHeaderPaint);
 
-    // Attaches métalliques supérieures du calendrier
+    // ==========================================
+    // 4. BRANCHE HORIZONTALE DU F
+    // ==========================================
+    final middleArm = Path()
+      ..moveTo(180, 245)
+      ..lineTo(354, 245)
+      ..cubicTo(351, 270, 341, 290, 318, 300)
+      ..lineTo(242, 300)
+      ..cubicTo(218, 300, 203, 314, 188, 337)
+      ..lineTo(180, 245)
+      ..close();
+
+    canvas.drawPath(
+      middleArm,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFE2E0F6), Color(0xFFB5AED8)],
+        ).createShader(const Rect.fromLTWH(180, 245, 175, 100)),
+    );
+
+    // ==========================================
+    // 5. INTÉRIEUR SOMBRE DU LOGO
+    // ==========================================
+    final inner = Path()
+      ..moveTo(203, 178)
+      ..cubicTo(203, 151, 221, 137, 247, 137)
+      ..lineTo(333, 137)
+      ..cubicTo(346, 165, 332, 202, 303, 222)
+      ..lineTo(260, 247)
+      ..lineTo(203, 247)
+      ..close();
+
+    canvas.drawPath(
+      inner,
+      Paint()..color = const Color(0xFF15151B),
+    );
+
+    // ==========================================
+    // 6. COCHE BLANCHE
+    // ==========================================
+    final check = Path()
+      ..moveTo(242, 218)
+      ..lineTo(267, 242)
+      ..lineTo(311, 198);
+
+    canvas.drawPath(
+      check,
+      Paint()
+        ..color = const Color(0xFF08080D)
+        ..strokeWidth = 25
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke,
+    );
+
+    canvas.drawPath(
+      check,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Colors.white, Color(0xFFE4E1F8)],
+        ).createShader(const Rect.fromLTWH(240, 190, 75, 55))
+        ..strokeWidth = 17
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke,
+    );
+
+    // ==========================================
+    // 7. CALENDRIER : OMBRE
+    // ==========================================
+    final calendar = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(180, 278, 104, 101),
+      const Radius.circular(23),
+    );
+
+    canvas.drawRRect(
+      calendar.shift(const Offset(3, 6)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.45)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+    );
+
+    // ==========================================
+    // 8. CORPS DU CALENDRIER
+    // ==========================================
+    canvas.drawRRect(
+      calendar,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, Color(0xFFE5E4F1)],
+        ).createShader(const Rect.fromLTWH(180, 278, 104, 101)),
+    );
+
+    // En-tête noir
+    final header = RRect.fromRectAndCorners(
+      const Rect.fromLTWH(180, 278, 104, 28),
+      topLeft: const Radius.circular(17),
+      topRight: const Radius.circular(17),
+    );
+
+    canvas.drawRRect(
+      header,
+      Paint()..color = const Color(0xFF19191F),
+    );
+
+    // ==========================================
+    // 9. ANNEAUX DU CALENDRIER
+    // ==========================================
     final ringPaint = Paint()
       ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.31, h * 0.495, w * 0.035, h * 0.05),
-        Radius.circular(w * 0.015),
-      ),
-      ringPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.47, h * 0.495, w * 0.035, h * 0.05),
-        Radius.circular(w * 0.015),
-      ),
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawLine(
+      const Offset(210, 265),
+      const Offset(210, 286),
       ringPaint,
     );
 
-    // Grille de pastilles / jours du calendrier (2 rangées de 3)
-    final dotPaint = Paint()..color = const Color(0xFF8E92A4);
-    final dotW = w * 0.045;
-    final dotH = h * 0.032;
-    final dotRadius = Radius.circular(w * 0.01);
+    canvas.drawLine(
+      const Offset(251, 265),
+      const Offset(251, 286),
+      ringPaint,
+    );
 
-    for (int row = 0; row < 2; row++) {
-      for (int col = 0; col < 3; col++) {
-        final dx = w * 0.285 + (col * w * 0.09);
-        final dy = h * 0.66 + (row * h * 0.07);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(dx, dy, dotW, dotH),
-            dotRadius,
-          ),
-          dotPaint,
-        );
-      }
+    // ==========================================
+    // 10. PETITS CARRÉS DU CALENDRIER
+    // ==========================================
+    final dotPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFA7A6C0), Color(0xFF87869F)],
+      ).createShader(const Rect.fromLTWH(195, 312, 75, 45));
+
+    const dots = [
+      Offset(210, 326),
+      Offset(237, 326),
+      Offset(264, 326),
+      Offset(210, 354),
+      Offset(237, 354),
+      Offset(264, 354),
+    ];
+
+    for (final point in dots) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: point, width: 15, height: 15),
+          const Radius.circular(4),
+        ),
+        dotPaint,
+      );
     }
+
+    // ==========================================
+    // FIN
+    // ==========================================
+    canvas.restore(); // échelle du symbole
+    canvas.restore(); // découpe du fond
+    canvas.restore(); // échelle du canvas
   }
 
   @override
-  bool shouldRepaint(covariant StylizedFLogoPainter oldDelegate) => false;
+  bool shouldRepaint(covariant FlowdayLogoPainter oldDelegate) =>
+      oldDelegate.framed != framed || oldDelegate.symbolScale != symbolScale;
 }

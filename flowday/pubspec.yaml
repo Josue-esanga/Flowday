@@ -76,6 +76,10 @@ flutter:
           weight: 600
         - asset: fonts/Poppins-Bold.ttf
           weight: 700
+    # Titres d'en-tête et marque « Flowday » (cursive variable)
+    - family: DancingScript
+      fonts:
+        - asset: fonts/DancingScript.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
