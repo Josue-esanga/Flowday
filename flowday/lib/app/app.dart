@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/providers/auth_deep_links.dart';
 import '../core/providers/auth_provider.dart';
+import '../core/providers/theme_provider.dart';
 import '../core/providers/tasks_provider.dart';
 import '../features/auth/presentation/auth_screen.dart';
 import '../shared/data/task_repository.dart';
@@ -34,11 +35,13 @@ class FlowdayApp extends StatefulWidget {
 
 class _FlowdayAppState extends State<FlowdayApp> {
   late final AuthProvider _auth;
+  late final ThemeProvider _theme;
   AuthDeepLinks? _deepLinks;
 
   @override
   void initState() {
     super.initState();
+    _theme = ThemeProvider()..restore();
     if (widget.auth != null) {
       // Session injectée (tests) : aucune restauration, aucun lien.
       _auth = widget.auth!;
@@ -56,6 +59,7 @@ class _FlowdayAppState extends State<FlowdayApp> {
   @override
   void dispose() {
     _deepLinks?.dispose();
+    _theme.dispose();
     super.dispose();
   }
 
@@ -64,17 +68,22 @@ class _FlowdayAppState extends State<FlowdayApp> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>.value(value: _auth),
+        ChangeNotifierProvider<ThemeProvider>.value(value: _theme),
         ChangeNotifierProvider<TasksProvider>(
           create: (_) => TasksProvider(
             repository: widget.repository ?? TaskRepository(auth: _auth),
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Flowday',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: const _AuthGate(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, appearance, _) => MaterialApp(
+          title: 'Flowday',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: appearance.isDark ? ThemeMode.dark : ThemeMode.light,
+          home: const _AuthGate(),
+        ),
       ),
     );
   }

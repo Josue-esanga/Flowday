@@ -83,7 +83,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -158,6 +158,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
   }
 
   Widget _buildBody() {
+    final colors = Theme.of(context).colorScheme;
     if (_loading) {
       // Liste en skeleton : la forme du contenu s'affiche immédiatement.
       return const SkeletonTaskList();
@@ -168,10 +169,13 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
 
     final tasks = _tasks ?? const <TaskItem>[];
     if (tasks.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'Aucune tâche dans cette catégorie',
-          style: TextStyle(color: AppColors.muted, fontSize: 14),
+          style: TextStyle(
+            color: colors.onSurface.withValues(alpha: 0.65),
+            fontSize: 14,
+          ),
         ),
       );
     }
@@ -193,8 +197,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
               children: [
                 Text(
                   FlowDates.displayDate(DateTime.parse(entry.key)),
-                  style: const TextStyle(
-                    color: AppColors.text,
+                  style: TextStyle(
+                    color: colors.onSurface,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
@@ -203,7 +207,10 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                 Text(
                   '${entry.value.length} tâche'
                   '${entry.value.length > 1 ? 's' : ''}',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                  style: TextStyle(
+                    color: colors.onSurface.withValues(alpha: 0.65),
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -215,8 +222,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
               completed: task.completed,
               trailing: Text(
                 task.timeLabel.toLowerCase(),
-                style: const TextStyle(
-                  color: AppColors.muted,
+                style: TextStyle(
+                  color: colors.onSurface.withValues(alpha: 0.65),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),

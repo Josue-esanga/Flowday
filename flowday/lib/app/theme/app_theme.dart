@@ -82,4 +82,47 @@ class AppTheme {
       highlightColor: AppColors.dark.withValues(alpha: 0.04),
     );
   }
+
+  static ThemeData dark() {
+    final base = ThemeData(
+      brightness: Brightness.dark,
+      useMaterial3: true,
+      fontFamily: 'Poppins',
+    );
+    const background = Color(0xFF111318);
+    const surface = Color(0xFF1B1E25);
+    const foreground = Color(0xFFF2F3F5);
+    return base.copyWith(
+      scaffoldBackgroundColor: background,
+      canvasColor: background,
+      cardColor: surface,
+      dividerColor: const Color(0xFF343842),
+      colorScheme: base.colorScheme.copyWith(
+        primary: const Color(0xFFB9C0CF),
+        secondary: const Color(0xFFB9C0CF),
+        surface: surface,
+        onSurface: foreground,
+      ),
+      textTheme: base.textTheme.apply(
+        bodyColor: foreground,
+        displayColor: foreground,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: background,
+        foregroundColor: foreground,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? foreground
+              : const Color(0xFF9295A3),
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? const Color(0xFF687286)
+              : const Color(0xFF343842),
+        ),
+      ),
+    );
+  }
 }

@@ -21,6 +21,7 @@ class TasksProvider extends ChangeNotifier {
   List<TaskItem> yesterdayTasks = [];
   List<TaskItem> dayTasks = [];
   ProfileStats? stats;
+  final Set<String> _pendingTaskToggles = {};
 
   // Jour sélectionné (timeline + calendrier).
   DateTime selectedDate = DateTime.now();
@@ -162,14 +163,22 @@ class TasksProvider extends ChangeNotifier {
   // F6 — terminer / déterminer (mise à jour optimiste)
   // ---------------------------------------------------------------------
   Future<bool> toggle(TaskItem task) async {
+    if (!_pendingTaskToggles.add(task.id)) return true;
     final previous = task.completed;
-    _applyCompleted(task.id, !previous);
+    final requested = !previous;
+    _applyCompleted(task.id, requested);
     notifyListeners();
     try {
-      final updated = await repository.toggleTask(task.id);
+      final updated = await repository.setTaskCompleted(task.id, requested);
       _removeById(updated.id);
       _insert(updated);
-      _adjustStats(completedDelta: updated.completed ? 1 : -1);
+      _adjustStats(
+        completedDelta: updated.completed == previous
+            ? 0
+            : updated.completed
+            ? 1
+            : -1,
+      );
       notifyListeners();
       return true;
     } catch (_) {
@@ -178,6 +187,8 @@ class TasksProvider extends ChangeNotifier {
       _applyCompleted(task.id, previous);
       notifyListeners();
       return false;
+    } finally {
+      _pendingTaskToggles.remove(task.id);
     }
   }
 
@@ -204,6 +215,7 @@ class TasksProvider extends ChangeNotifier {
     yesterdayTasks = [];
     dayTasks = [];
     stats = null;
+    _pendingTaskToggles.clear();
     selectedDate = DateTime.now();
     loading = false;
     error = null;
@@ -253,7 +265,7 @@ class TasksProvider extends ChangeNotifier {
 
   void _adjustStats({int totalDelta = 0, int completedDelta = 0}) {
     final current = stats;
-    if (current == null && totalDelta == 0 && completedDelta == 0) return;
+    if (current == null && totalDelta == 0) return;
     stats = ProfileStats(
       totalTasks: (current?.totalTasks ?? 0) + totalDelta,
       completedTasks: (current?.completedTasks ?? 0) + completedDelta,

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/ui/confirm_sign_out.dart';
 
 /// Paramètres (README §3.4) : thème, notifications, langue, à propos.
@@ -15,22 +16,23 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _darkTheme = false;
   bool _notifications = true;
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     final auth = context.watch<AuthProvider>();
+    final appearance = context.watch<ThemeProvider>();
+    final colors = Theme.of(context).colorScheme;
 
     return ListView(
       padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 110),
       children: [
         // Titre principal (même échelle que les autres écrans).
-        const Text(
+        Text(
           'Paramètres',
           style: TextStyle(
-            color: AppColors.text,
+            color: colors.onSurface,
             fontSize: 32,
             fontWeight: FontWeight.bold,
           ),
@@ -42,8 +44,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SwitchRow(
               icon: Icons.dark_mode_outlined,
               label: 'Thème sombre',
-              value: _darkTheme,
-              onChanged: (v) => setState(() => _darkTheme = v),
+              value: appearance.isDark,
+              onChanged: context.read<ThemeProvider>().setDarkMode,
             ),
           ],
         ),
@@ -57,7 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _notifications,
               onChanged: (v) => setState(() => _notifications = v),
             ),
-            const Divider(color: AppColors.divider, height: 1),
+            Divider(color: Theme.of(context).dividerColor, height: 1),
             const _LinkRow(
               icon: Icons.schedule,
               label: 'Rappel par défaut',
@@ -90,10 +92,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Connecté en tant que',
                           style: TextStyle(
-                            color: AppColors.text,
+                            color: colors.onSurface,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -101,8 +103,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 3),
                         Text(
                           auth.email ?? '—',
-                          style: const TextStyle(
-                            color: AppColors.muted,
+                          style: TextStyle(
+                            color: colors.onSurface.withValues(alpha: 0.65),
                             fontSize: 13,
                           ),
                         ),
@@ -112,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            const Divider(color: AppColors.divider, height: 1),
+            Divider(color: Theme.of(context).dividerColor, height: 1),
             InkWell(
               onTap: auth.busy ? null : () => _signOut(context),
               child: const Padding(
@@ -181,12 +183,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10, left: 4),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppColors.muted,
+        style: TextStyle(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -202,9 +205,12 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.itemBg,
+        color: theme.brightness == Brightness.dark
+            ? theme.cardColor
+            : AppColors.itemBg,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
@@ -234,30 +240,28 @@ class _SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: AppColors.muted),
+          Icon(
+            icon,
+            size: 22,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.text,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: Colors.white,
-            activeTrackColor: AppColors.dark,
-            inactiveThumbColor: AppColors.muted,
-            inactiveTrackColor: AppColors.lightCard,
-          ),
+          Switch(value: value, onChanged: onChanged),
         ],
       ),
     );
@@ -277,17 +281,22 @@ class _LinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: AppColors.muted),
+          Icon(
+            icon,
+            size: 22,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.text,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -295,10 +304,17 @@ class _LinkRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: const TextStyle(color: AppColors.muted, fontSize: 13),
+            style: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(width: 6),
-          const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+          Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+          ),
         ],
       ),
     );

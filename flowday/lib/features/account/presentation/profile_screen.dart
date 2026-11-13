@@ -29,7 +29,9 @@ class ProfileScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     return Container(
-      color: const Color(0xFFF8F8FC),
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).scaffoldBackgroundColor
+          : const Color(0xFFF8F8FC),
       child: ListView(
         padding: const EdgeInsets.only(bottom: 18),
         children: [
@@ -50,8 +52,6 @@ class ProfileScreen extends StatelessWidget {
           _PersonalInformationCard(
             name: _displayName(auth),
             email: auth.email ?? '—',
-            phone: auth.phone,
-            location: auth.location,
             onEdit: () => _editProfile(context),
           ),
           _ProfileSettingsCard(
@@ -233,7 +233,7 @@ class _ProfileTopArea extends StatelessWidget {
             top: topPadding + 22,
             left: 24,
             child: const Text(
-              'Flowday',
+              'Profil',
               style: TextStyle(
                 fontFamily: 'DancingScript',
                 fontVariations: [FontVariation('wght', 700)],
@@ -285,8 +285,8 @@ class _ProfileTopArea extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF171827),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                   ),
@@ -382,7 +382,7 @@ class _ProfileStatistics extends StatelessWidget {
       return Container(
         margin: const EdgeInsets.fromLTRB(22, 0, 22, 22),
         padding: const EdgeInsets.all(18),
-        decoration: _profileCardDecoration(),
+        decoration: _profileCardDecoration(context),
         child: Row(
           children: [
             const Icon(Icons.cloud_off_outlined, color: AppColors.muted),
@@ -406,7 +406,7 @@ class _ProfileStatistics extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(22, 0, 22, 22),
       padding: const EdgeInsets.symmetric(vertical: 19),
-      decoration: _profileCardDecoration(),
+      decoration: _profileCardDecoration(context),
       child: Row(
         children: [
           Expanded(
@@ -453,12 +453,12 @@ class _ProfileStatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 21, color: const Color(0xFF171827)),
+        Icon(icon, size: 21, color: Theme.of(context).colorScheme.onSurface),
         const SizedBox(height: 7),
         Text(
           value,
-          style: const TextStyle(
-            color: Color(0xFF171827),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 21,
             fontWeight: FontWeight.w700,
           ),
@@ -487,15 +487,11 @@ class _PersonalInformationCard extends StatelessWidget {
   const _PersonalInformationCard({
     required this.name,
     required this.email,
-    required this.phone,
-    required this.location,
     required this.onEdit,
   });
 
   final String name;
   final String email;
-  final String phone;
-  final String location;
   final VoidCallback onEdit;
 
   @override
@@ -503,22 +499,22 @@ class _PersonalInformationCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(22, 0, 22, 18),
       padding: const EdgeInsets.all(20),
-      decoration: _profileCardDecoration(),
+      decoration: _profileCardDecoration(context),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.person_outline,
-                color: Color(0xFF171827),
+                color: Theme.of(context).colorScheme.onSurface,
                 size: 23,
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Informations personnelles',
                   style: TextStyle(
-                    color: Color(0xFF171827),
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -550,18 +546,6 @@ class _PersonalInformationCard extends StatelessWidget {
             icon: Icons.mail_outline,
             label: 'Adresse e-mail',
             value: email,
-          ),
-          const SizedBox(height: 12),
-          _ProfileInfoRow(
-            icon: Icons.phone_outlined,
-            label: 'Téléphone',
-            value: phone.isEmpty ? 'Non renseigné' : phone,
-          ),
-          const SizedBox(height: 12),
-          _ProfileInfoRow(
-            icon: Icons.location_on_outlined,
-            label: 'Localisation',
-            value: location.isEmpty ? 'Non renseignée' : location,
           ),
         ],
       ),
@@ -600,8 +584,9 @@ class _ProfileInfoRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.end,
-            style: const TextStyle(
-              color: Color(0xFF343746),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface
+                  .withValues(alpha: 0.8),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -626,7 +611,7 @@ class _ProfileSettingsCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(22, 0, 22, 18),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: _profileCardDecoration(),
+      decoration: _profileCardDecoration(context),
       child: Column(
         children: [
           if (onOpenSettings != null) ...[
@@ -688,8 +673,8 @@ class _ProfileActionTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Color(0xFF171827),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -749,8 +734,10 @@ class _LogoutButton extends StatelessWidget {
   }
 }
 
-BoxDecoration _profileCardDecoration() => BoxDecoration(
-  color: Colors.white,
+BoxDecoration _profileCardDecoration(BuildContext context) => BoxDecoration(
+  color: Theme.of(context).brightness == Brightness.dark
+      ? Theme.of(context).cardColor
+      : Colors.white,
   borderRadius: BorderRadius.circular(30),
   boxShadow: [
     BoxShadow(

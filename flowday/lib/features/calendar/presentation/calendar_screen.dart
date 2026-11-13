@@ -74,6 +74,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final state = context.watch<TasksProvider>();
     final selected = state.selectedDate;
     final topPadding = MediaQuery.of(context).padding.top;
@@ -110,7 +111,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Text(
                 'Calendrier',
                 style: TextStyle(
-                  color: AppColors.text,
+                  color: colors.onSurface,
                   fontSize: isCompact ? 26 : 32,
                   fontWeight: FontWeight.bold,
                 ),
@@ -124,7 +125,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 children: [
                   IconButton(
                     onPressed: _previousMonth,
-                    icon: const Icon(Icons.chevron_left, color: AppColors.dark),
+                    icon: Icon(Icons.chevron_left, color: colors.primary),
                   ),
                   Expanded(
                     child: Text(
@@ -133,7 +134,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: AppColors.text,
+                        color: colors.onSurface,
                         fontSize: isCompact ? 15 : 17,
                         fontWeight: FontWeight.w600,
                       ),
@@ -141,10 +142,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                   IconButton(
                     onPressed: _nextMonth,
-                    icon: const Icon(
-                      Icons.chevron_right,
-                      color: AppColors.dark,
-                    ),
+                    icon: Icon(Icons.chevron_right, color: colors.primary),
                   ),
                 ],
               ),
@@ -163,7 +161,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: Text(
                             label,
                             style: TextStyle(
-                              color: AppColors.muted,
+                              color: colors.onSurface.withValues(alpha: 0.65),
                               fontSize: isCompact ? 11 : 13,
                               fontWeight: FontWeight.w500,
                             ),
@@ -247,6 +245,7 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Center(
       child: GestureDetector(
         onTap: onTap,
@@ -256,13 +255,13 @@ class _DayCell extends StatelessWidget {
           height: size,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.dark : Colors.transparent,
+            color: selected ? colors.primary : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: Text(
             '$day',
             style: TextStyle(
-              color: selected ? Colors.white : AppColors.text,
+              color: selected ? colors.onPrimary : colors.onSurface,
               fontSize: fontSize,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             ),
@@ -299,6 +298,7 @@ class _SelectedDaySummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     String subtitle;
     if (loading) {
       subtitle = 'Chargement…';
@@ -316,7 +316,9 @@ class _SelectedDaySummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.lightCard,
+        color: theme.brightness == Brightness.dark
+            ? theme.cardColor
+            : AppColors.lightCard,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
@@ -325,7 +327,7 @@ class _SelectedDaySummary extends StatelessWidget {
           Text(
             '$_weekday, ${FlowDates.months[selected.month - 1]} ${selected.day}',
             style: TextStyle(
-              color: AppColors.text,
+              color: theme.colorScheme.onSurface,
               fontSize: isCompact ? 15 : 16,
               fontWeight: FontWeight.w700,
             ),
@@ -337,7 +339,10 @@ class _SelectedDaySummary extends StatelessWidget {
           else
             Text(
               subtitle,
-              style: const TextStyle(color: AppColors.muted, fontSize: 14),
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                fontSize: 14,
+              ),
             ),
           const SizedBox(height: 14),
           SizedBox(
@@ -346,8 +351,8 @@ class _SelectedDaySummary extends StatelessWidget {
             child: FilledButton(
               onPressed: error == null ? onOpenTimeline : onRetry,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.dark,
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),

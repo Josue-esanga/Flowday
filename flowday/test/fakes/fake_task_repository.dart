@@ -145,6 +145,23 @@ class FakeTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<TaskItem> setTaskCompleted(String id, bool completed) async {
+    toggledIds.add(id);
+    final task = _byId(id);
+    final updated = TaskItem(
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      date: task.date,
+      time: task.time,
+      category: task.category,
+      completed: completed,
+    );
+    _store[id] = updated;
+    return updated;
+  }
+
+  @override
   Future<ProfileStats> fetchStats() async =>
       const ProfileStats(totalTasks: 30, completedTasks: 12, tasksThisWeek: 24);
 

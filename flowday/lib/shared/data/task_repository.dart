@@ -153,10 +153,16 @@ class TaskRepository {
     if (current.isEmpty) throw _notFound;
     final completed = current.first['completed'] == true;
 
+    return setTaskCompleted(id, !completed);
+  }
+
+  /// Définit l'état demandé directement (le provider connaît déjà la
+  /// nouvelle valeur), sans relire l'état courant avant le PATCH.
+  Future<TaskItem> setTaskCompleted(String id, bool completed) async {
     final rows = await _client.patch(
       'planning_task',
       query: {'id': 'eq.$id', 'select': _taskSelect},
-      body: {'completed': !completed},
+      body: {'completed': completed},
     );
     if (rows.isEmpty) throw _notFound;
     return _taskFromRow(rows.first);

@@ -29,11 +29,14 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       height: 82,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.navBg,
+        color: theme.brightness == Brightness.dark
+            ? theme.cardColor
+            : AppColors.navBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -80,14 +83,14 @@ class BottomNavBar extends StatelessWidget {
                       _icons[tabIndex],
                       size: 23,
                       color: selected
-                          ? AppColors.dark
-                          : AppColors.navIconInactive,
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                     const SizedBox(height: 8),
                     if (selected)
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 3,
-                        backgroundColor: AppColors.dark,
+                        backgroundColor: theme.colorScheme.onSurface,
                       ),
                   ],
                 ),

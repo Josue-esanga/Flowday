@@ -12,6 +12,7 @@ class TaskListItem extends StatelessWidget {
     this.completed = false,
     this.trailing,
     this.onTap,
+    this.onToggle,
   });
 
   final String title;
@@ -21,9 +22,11 @@ class TaskListItem extends StatelessWidget {
   /// Élément à droite (heure, pastille…).
   final Widget? trailing;
   final VoidCallback? onTap;
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -31,7 +34,9 @@ class TaskListItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
         decoration: BoxDecoration(
-          color: AppColors.itemBg,
+          color: theme.brightness == Brightness.dark
+              ? theme.cardColor
+              : AppColors.itemBg,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -44,17 +49,35 @@ class TaskListItem extends StatelessWidget {
         child: Row(
           children: [
             // Case à cocher.
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: completed ? AppColors.dark : Colors.transparent,
-                border: Border.all(color: AppColors.dark, width: 2),
-                borderRadius: BorderRadius.circular(8),
+            Semantics(
+              button: true,
+              label: completed
+                  ? 'Tâche terminée : $title'
+                  : 'Terminer : $title',
+              child: InkWell(
+                onTap: onToggle ?? onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: completed
+                          ? theme.colorScheme.primary
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: theme.colorScheme.onSurface,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: completed
+                        ? const Icon(Icons.check, color: Colors.white, size: 21)
+                        : null,
+                  ),
+                ),
               ),
-              child: completed
-                  ? const Icon(Icons.check, color: Colors.white, size: 21)
-                  : null,
             ),
             const SizedBox(width: 15),
             Expanded(
@@ -65,15 +88,19 @@ class TaskListItem extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppColors.itemText,
+                      color: theme.brightness == Brightness.dark
+                          ? theme.colorScheme.onSurface
+                          : AppColors.itemText,
                       decoration: completed ? TextDecoration.lineThrough : null,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: AppColors.itemText,
+                      color: theme.brightness == Brightness.dark
+                          ? theme.colorScheme.onSurface.withValues(alpha: 0.75)
+                          : AppColors.itemText,
                     ),
                   ),
                 ],

@@ -140,7 +140,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.white,
+        backgroundColor:
+            Theme.of(dialogContext).dialogTheme.backgroundColor ??
+            Theme.of(dialogContext).cardColor,
         title: const Text('Supprimer la tâche ?'),
         content: Text(
           '« ${widget.task!.title} » sera définitivement supprimée.',
@@ -193,7 +195,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         : null;
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           // En-tête avec retour.

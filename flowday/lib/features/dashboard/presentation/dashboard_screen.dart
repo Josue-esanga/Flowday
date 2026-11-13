@@ -67,6 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Consumer<TasksProvider>(
       builder: (context, state, _) {
+        final theme = Theme.of(context);
         if (state.loading) {
           // Chargement « skeleton » : l'en-tête reste visible et le
           // contenu à venir est esquimmé (perception de démarrage rapide).
@@ -115,213 +116,227 @@ class _DashboardScreenState extends State<DashboardScreen> {
             today.isEmpty &&
             yesterday.isEmpty;
 
-        return ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const _DashboardHeader(),
+        return RefreshIndicator(
+          onRefresh: state.loadInitial,
+          color: AppColors.dark,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              const _DashboardHeader(),
 
-            // ------------------------------------------------------------
-            // Recherche dynamique + bouton filtre / effacer
-            // ------------------------------------------------------------
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
-              child: Container(
-                height: 65,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.field,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.search,
-                      color: AppColors.placeholderIcon,
-                      size: 26,
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: (value) => setState(() => _query = value),
-                        cursorColor: AppColors.dark,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontSize: 17,
-                        ),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          hintText: 'Search',
-                          hintStyle: TextStyle(
-                            color: AppColors.placeholderText,
-                            fontSize: 17,
-                          ),
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      // Pendant une recherche : bouton « effacer » (×),
-                      // sinon le bouton de filtre du design.
-                      onTap: searching ? _clearSearch : null,
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: AppColors.dark,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          searching ? Icons.close : Icons.tune,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            if (noResults) ...[
               // ------------------------------------------------------------
-              // Aucun résultat pour la recherche
+              // Recherche dynamique + bouton filtre / effacer
               // ------------------------------------------------------------
               Padding(
-                padding: const EdgeInsets.fromLTRB(22, 40, 22, 60),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.search_off,
-                      size: 46,
-                      color: AppColors.muted,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Aucun résultat pour « ${_query.trim()} »',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 15,
+                padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
+                child: Container(
+                  height: 65,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: theme.brightness == Brightness.dark
+                        ? theme.cardColor
+                        : AppColors.field,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.55,
+                        ),
+                        size: 26,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) => setState(() => _query = value),
+                          cursorColor: theme.colorScheme.primary,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 17,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            hintText: 'Search',
+                            hintStyle: TextStyle(
+                              color: AppColors.placeholderText,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        // Pendant une recherche : bouton « effacer » (×),
+                        // sinon le bouton de filtre du design.
+                        onTap: searching ? _clearSearch : null,
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: AppColors.dark,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            searching ? Icons.close : Icons.tune,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ] else ...[
-              // ------------------------------------------------------------
-              // Catégories (F7) : cartes horizontales, flèche → page de la
-              // catégorie (carte entière cliquable)
-              // ------------------------------------------------------------
-              if (categories.isNotEmpty || !searching) ...[
-                const SectionTitle(title: 'Categories', action: 'All'),
-                const SizedBox(height: 18),
-                if (categories.isEmpty)
-                  const SizedBox(
-                    height: 120,
-                    child: Center(
-                      child: Text(
-                        'Aucune catégorie',
-                        style: TextStyle(color: AppColors.muted, fontSize: 14),
-                      ),
-                    ),
-                  )
-                else
-                  SizedBox(
-                    height: 295,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      itemCount: categories.length,
-                      itemBuilder: (context, index) {
-                        final category = categories[index];
-                        final info = categoryInfo[category.id];
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            right: index == categories.length - 1 ? 0 : 14,
-                          ),
-                          child: _CategoryCard(
-                            title: category.name,
-                            description: info?.$1 ?? category.name,
-                            icon: info?.$2 ?? Icons.label_outline,
-                            dark: index == 0,
-                            onTap: () => widget.onOpenCategory(category),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 25),
-              ],
 
-              // ------------------------------------------------------------
-              // Tâches du jour (F1)
-              // ------------------------------------------------------------
-              if (today.isNotEmpty || !searching) ...[
-                SectionTitle(
-                  title: "Today's task",
-                  action: 'See all',
-                  onAction: () => widget.onSeeAll(DateTime.now()),
-                ),
-                const SizedBox(height: 15),
-                if (today.isEmpty)
-                  const _EmptyLine(text: 'Aucune tâche pour ce jour')
-                else
-                  for (final task in today)
-                    TaskListItem(
-                      title: task.title,
-                      subtitle: task.description,
-                      completed: task.completed,
-                      trailing: Text(
-                        task.timeLabel.toLowerCase(),
+              if (noResults) ...[
+                // ------------------------------------------------------------
+                // Aucun résultat pour la recherche
+                // ------------------------------------------------------------
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 40, 22, 60),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.search_off,
+                        size: 46,
+                        color: AppColors.muted,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Aucun résultat pour « ${_query.trim()} »',
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.muted,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
                         ),
                       ),
-                      // Clic sur la carte : coche / décoche la tâche (F6).
-                      onTap: () => widget.onToggleTask(task),
-                    ),
-                const SizedBox(height: 20),
-              ],
-
-              // ------------------------------------------------------------
-              // Tâches d'hier
-              // ------------------------------------------------------------
-              if (yesterday.isNotEmpty || !searching) ...[
-                SectionTitle(
-                  title: "Yesterday's task",
-                  action: 'See all',
-                  onAction: () => widget.onSeeAll(
-                    DateTime.now().subtract(const Duration(days: 1)),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 15),
-                if (yesterday.isEmpty)
-                  const _EmptyLine(text: 'Aucune tâche hier')
-                else
-                  for (final task in yesterday)
-                    TaskListItem(
-                      title: task.title,
-                      subtitle: task.description,
-                      completed: task.completed,
-                      trailing: Text(
-                        task.timeLabel.toLowerCase(),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+              ] else ...[
+                // ------------------------------------------------------------
+                // Catégories (F7) : cartes horizontales, flèche → page de la
+                // catégorie (carte entière cliquable)
+                // ------------------------------------------------------------
+                if (categories.isNotEmpty || !searching) ...[
+                  const SectionTitle(title: 'Categories', action: 'All'),
+                  const SizedBox(height: 18),
+                  if (categories.isEmpty)
+                    const SizedBox(
+                      height: 120,
+                      child: Center(
+                        child: Text(
+                          'Aucune catégorie',
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
-                      // Clic sur la carte : coche / décoche la tâche (F6).
-                      onTap: () => widget.onToggleTask(task),
+                    )
+                  else
+                    SizedBox(
+                      height: 295,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        itemCount: categories.length,
+                        itemBuilder: (context, index) {
+                          final category = categories[index];
+                          final info = categoryInfo[category.id];
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              right: index == categories.length - 1 ? 0 : 14,
+                            ),
+                            child: _CategoryCard(
+                              title: category.name,
+                              description: info?.$1 ?? category.name,
+                              icon: info?.$2 ?? Icons.label_outline,
+                              dark: index == 0,
+                              onTap: () => widget.onOpenCategory(category),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                const SizedBox(height: 25),
+                  const SizedBox(height: 25),
+                ],
+
+                // ------------------------------------------------------------
+                // Tâches du jour (F1)
+                // ------------------------------------------------------------
+                if (today.isNotEmpty || !searching) ...[
+                  SectionTitle(
+                    title: "Today's task",
+                    action: 'See all',
+                    onAction: () => widget.onSeeAll(DateTime.now()),
+                  ),
+                  const SizedBox(height: 15),
+                  if (today.isEmpty)
+                    const _EmptyLine(text: 'Aucune tâche pour ce jour')
+                  else
+                    for (final task in today)
+                      TaskListItem(
+                        title: task.title,
+                        subtitle: task.description,
+                        completed: task.completed,
+                        trailing: Text(
+                          task.timeLabel.toLowerCase(),
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        // Clic sur la carte : coche / décoche la tâche (F6).
+                        onTap: () => widget.onToggleTask(task),
+                        onToggle: () => widget.onToggleTask(task),
+                      ),
+                  const SizedBox(height: 20),
+                ],
+
+                // ------------------------------------------------------------
+                // Tâches d'hier
+                // ------------------------------------------------------------
+                if (yesterday.isNotEmpty || !searching) ...[
+                  SectionTitle(
+                    title: "Yesterday's task",
+                    action: 'See all',
+                    onAction: () => widget.onSeeAll(
+                      DateTime.now().subtract(const Duration(days: 1)),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  if (yesterday.isEmpty)
+                    const _EmptyLine(text: 'Aucune tâche hier')
+                  else
+                    for (final task in yesterday)
+                      TaskListItem(
+                        title: task.title,
+                        subtitle: task.description,
+                        completed: task.completed,
+                        trailing: Text(
+                          task.timeLabel.toLowerCase(),
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        // Clic sur la carte : coche / décoche la tâche (F6).
+                        onTap: () => widget.onToggleTask(task),
+                        onToggle: () => widget.onToggleTask(task),
+                      ),
+                  const SizedBox(height: 25),
+                ],
               ],
             ],
-          ],
+          ),
         );
       },
     );
@@ -450,7 +465,8 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color foreground = dark ? Colors.white : AppColors.dark;
+    final theme = Theme.of(context);
+    final Color foreground = dark ? Colors.white : theme.colorScheme.onSurface;
 
     return GestureDetector(
       onTap: onTap,
@@ -459,7 +475,7 @@ class _CategoryCard extends StatelessWidget {
         width: 245,
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          color: dark ? AppColors.dark : AppColors.lightCard,
+          color: dark ? AppColors.dark : theme.cardColor,
           borderRadius: BorderRadius.circular(38),
         ),
         child: Column(
@@ -491,7 +507,9 @@ class _CategoryCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: dark ? Colors.white70 : AppColors.muted,
+                color: dark
+                    ? Colors.white70
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.65),
                 fontSize: 17,
                 height: 1.4,
               ),

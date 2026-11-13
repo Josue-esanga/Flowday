@@ -48,6 +48,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<TasksProvider>();
     final auth = context.watch<AuthProvider>();
+    final colors = Theme.of(context).colorScheme;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selected = DateTime(
@@ -71,10 +72,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
             children: [
               IconButton(
                 onPressed: widget.onBack,
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new,
                   size: 20,
-                  color: AppColors.dark,
+                  color: colors.primary,
                 ),
               ),
               Expanded(
@@ -83,16 +84,16 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   children: [
                     Text(
                       FlowDates.displayDate(state.selectedDate),
-                      style: const TextStyle(
-                        color: AppColors.muted,
+                      style: TextStyle(
+                        color: colors.onSurface.withValues(alpha: 0.65),
                         fontSize: 15,
                       ),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       isToday ? 'Today' : FlowDates.weekdayName(selected),
-                      style: const TextStyle(
-                        color: AppColors.text,
+                      style: TextStyle(
+                        color: colors.onSurface,
                         fontSize: 39,
                         fontWeight: FontWeight.bold,
                       ),
@@ -227,7 +228,7 @@ class _TimelineBody extends StatelessWidget {
     // via un pop-up d'actions simple.
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -281,7 +282,7 @@ class _TimelineBody extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.white,
+        backgroundColor: Theme.of(context).cardColor,
         title: const Text('Supprimer la tâche ?'),
         content: Text(
           '« ${task.title} » sera définitivement supprimée.',

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
-
 /// Titre de section : nom en gras + lien d'action à droite.
 class SectionTitle extends StatelessWidget {
   const SectionTitle({
@@ -17,6 +15,7 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Row(
@@ -24,8 +23,8 @@ class SectionTitle extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: AppColors.text,
+            style: TextStyle(
+              color: colors.onSurface,
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
@@ -37,7 +36,7 @@ class SectionTitle extends StatelessWidget {
               padding: const EdgeInsets.all(4),
               child: Text(
                 action,
-                style: const TextStyle(color: AppColors.dark, fontSize: 14),
+                style: TextStyle(color: colors.primary, fontSize: 14),
               ),
             ),
           ),
