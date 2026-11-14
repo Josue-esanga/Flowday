@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/utils/date_utils.dart';
 import '../../../shared/widgets/avatar.dart';
+import '../../../shared/widgets/sheet_action_surface.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/timeline_tile.dart';
 import 'task_form_screen.dart';
@@ -24,11 +26,13 @@ class TimelineScreen extends StatefulWidget {
 }
 
 class _TimelineScreenState extends State<TimelineScreen> {
-  List<DateTime> get _week => FlowDates.weekOf(DateTime.now());
-
-  int _selectedIndex(DateTime selected) {
-    final monday = FlowDates.mondayOf(DateTime.now());
-    return selected.difference(monday).inDays.clamp(0, 6);
+  int _selectedIndex(DateTime selected, List<DateTime> week) {
+    return week.indexWhere(
+      (day) =>
+          day.year == selected.year &&
+          day.month == selected.month &&
+          day.day == selected.day,
+    );
   }
 
   Future<void> _toggle(TaskItem task) async {
@@ -37,8 +41,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Action impossible (serveur injoignable).'),
+        SnackBar(
+          content: Text(context.tr('Action impossible (serveur injoignable).')),
         ),
       );
     }
@@ -58,7 +62,9 @@ class _TimelineScreenState extends State<TimelineScreen> {
     );
     final isToday = selected == today;
     final topPadding = MediaQuery.of(context).padding.top;
-    final week = _week;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final compact = screenWidth < 360;
+    final week = FlowDates.weekOf(state.selectedDate);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,10 +97,16 @@ class _TimelineScreenState extends State<TimelineScreen> {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      isToday ? 'Today' : FlowDates.weekdayName(selected),
+                      isToday
+                          ? context.tr('Today')
+                          : FlowDates.weekdayName(selected),
                       style: TextStyle(
                         color: colors.onSurface,
-                        fontSize: 39,
+                        fontSize: compact
+                            ? 31
+                            : screenWidth < 600
+                            ? 35
+                            : 39,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -118,23 +130,31 @@ class _TimelineScreenState extends State<TimelineScreen> {
         // ----------------------------------------------------------------
         // Sélecteur de dates (pilules verticales)
         // ----------------------------------------------------------------
-        SizedBox(
-          height: 105,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              for (var i = 0; i < week.length; i++)
-                _DatePill(
-                  dayNumber: '${week[i].day}',
-                  dayLabel: FlowDates.shortWeekday(week[i]),
-                  selected: i == _selectedIndex(state.selectedDate),
-                  onTap: () =>
-                      context.read<TasksProvider>().selectDate(week[i]),
-                ),
-            ],
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final pillWidth = constraints.maxWidth / week.length;
+            return SizedBox(
+              height: compact ? 88 : 98,
+              child: Row(
+                children: [
+                  for (var i = 0; i < week.length; i++)
+                    SizedBox(
+                      width: pillWidth,
+                      child: _DatePill(
+                        dayNumber: '${week[i].day}',
+                        dayLabel: FlowDates.shortWeekday(week[i]),
+                        selected: i == _selectedIndex(state.selectedDate, week),
+                        compact: compact,
+                        onTap: () =>
+                            context.read<TasksProvider>().selectDate(week[i]),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
-        const SizedBox(height: 22),
+        SizedBox(height: compact ? 12 : 18),
 
         // ----------------------------------------------------------------
         // Timeline des tâches du jour sélectionné (F1)
@@ -190,7 +210,7 @@ class _TimelineBody extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                child: const Text('Réessayer'),
+                child: Text(context.tr('Réessayer')),
               ),
             ],
           ),
@@ -228,47 +248,61 @@ class _TimelineBody extends StatelessWidget {
     // via un pop-up d'actions simple.
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              task.title,
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+      builder: (sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                task.title,
+                style: TextStyle(
+                  color: Theme.of(sheetContext).colorScheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined, color: AppColors.dark),
-              title: const Text('Modifier la tâche'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _pushEdit(context, task);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: AppColors.personal),
-              title: Text(
-                'Supprimer',
-                style: TextStyle(color: AppColors.personal),
+              const SizedBox(height: 16),
+              SheetActionSurface(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.dark,
+                  ),
+                  title: Text(l10n.t('Modifier la tâche')),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _pushEdit(context, task);
+                  },
+                ),
               ),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _confirmDelete(context, task);
-              },
-            ),
-          ],
-        ),
-      ),
+              SheetActionSurface(
+                child: ListTile(
+                  leading: Icon(
+                    Icons.delete_outline,
+                    color: AppColors.personal,
+                  ),
+                  title: Text(
+                    l10n.t('Supprimer'),
+                    style: TextStyle(color: AppColors.personal),
+                  ),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _confirmDelete(context, task);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -279,27 +313,28 @@ class _TimelineBody extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, TaskItem task) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: Theme.of(context).cardColor,
-        title: const Text('Supprimer la tâche ?'),
+        title: Text(l10n.t('Supprimer la tâche ?')),
         content: Text(
-          '« ${task.title} » sera définitivement supprimée.',
+          l10n.deleteTaskBody(task.title),
           style: const TextStyle(color: AppColors.muted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Annuler',
-              style: TextStyle(color: AppColors.muted),
+            child: Text(
+              l10n.t('Annuler'),
+              style: const TextStyle(color: AppColors.muted),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(
-              'Supprimer',
+              l10n.t('Supprimer'),
               style: TextStyle(color: AppColors.personal),
             ),
           ),
@@ -314,7 +349,7 @@ class _TimelineBody extends StatelessWidget {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Suppression impossible.')),
+          SnackBar(content: Text(context.tr('Suppression impossible.'))),
         );
       }
     }
@@ -329,25 +364,31 @@ class _DatePill extends StatelessWidget {
     required this.dayNumber,
     required this.dayLabel,
     required this.selected,
+    required this.compact,
     required this.onTap,
   });
 
   final String dayNumber;
   final String dayLabel;
   final bool selected;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final darkMode = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 48,
-        height: selected ? 100 : 70,
+        width: double.infinity,
+        height: selected ? (compact ? 82 : 90) : (compact ? 58 : 64),
         decoration: BoxDecoration(
-          color: selected ? AppColors.dark : Colors.transparent,
+          color: selected
+              ? (darkMode ? colors.primary : AppColors.dark)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(28),
         ),
         child: Column(
@@ -356,22 +397,29 @@ class _DatePill extends StatelessWidget {
             Text(
               dayNumber,
               style: TextStyle(
-                color: selected ? Colors.white : AppColors.muted,
-                fontSize: 15,
+                color: selected
+                    ? (darkMode ? colors.surface : Colors.white)
+                    : colors.onSurface.withValues(alpha: 0.58),
+                fontSize: compact ? 13 : 15,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
-            const SizedBox(height: 7),
+            SizedBox(height: compact ? 5 : 7),
             Text(
               dayLabel,
               style: TextStyle(
-                color: selected ? Colors.white : AppColors.muted,
-                fontSize: 14,
+                color: selected
+                    ? (darkMode ? colors.surface : Colors.white)
+                    : colors.onSurface.withValues(alpha: 0.58),
+                fontSize: compact ? 12 : 14,
               ),
             ),
             if (selected) ...[
-              const SizedBox(height: 9),
-              const CircleAvatar(radius: 3, backgroundColor: Colors.white),
+              SizedBox(height: compact ? 5 : 7),
+              CircleAvatar(
+                radius: 2.5,
+                backgroundColor: darkMode ? colors.surface : Colors.white,
+              ),
             ],
           ],
         ),
@@ -388,19 +436,19 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.event_available_outlined,
             size: 46,
             color: AppColors.muted,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
-            'Aucune tâche pour ce jour',
-            style: TextStyle(
+            context.tr('Aucune tâche pour ce jour'),
+            style: const TextStyle(
               color: AppColors.muted,
               fontSize: 14,
               fontWeight: FontWeight.w500,

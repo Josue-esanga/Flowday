@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../errors/api_exception.dart';
+import '../l10n/app_localizations.dart';
 import 'supabase_auth_client.dart';
 import 'supabase_config.dart';
 
@@ -41,12 +42,14 @@ class SupabaseRestClient {
   /// Délai par requête (Supabase est public : réseau mobile compris).
   static const Duration _timeout = Duration(seconds: 10);
 
-  static const String _networkMessage =
-      'Impossible de joindre le serveur. Vérifiez votre connexion internet, '
-      'puis réessayez.';
+  static String get _networkMessage => AppLocalizations.instance.t(
+    'Impossible de joindre le serveur. Vérifiez votre connexion internet, '
+    'puis réessayez.',
+  );
 
-  static const String _configMessage =
-      'Application non configurée. Contactez le support.';
+  static String get _configMessage => AppLocalizations.instance.t(
+    'Application non configurée. Contactez le support.',
+  );
 
   /// En-têtes : `apikey` (identification du projet) + `Authorization`
   /// (jeton utilisateur, sinon clé publique → rôle `anon` bloqué par RLS).
@@ -92,7 +95,7 @@ class SupabaseRestClient {
     bool retried = false,
   }) async {
     if (!SupabaseConfig.isConfigured) {
-      throw const ApiException(statusCode: 0, message: _configMessage);
+      throw ApiException(statusCode: 0, message: _configMessage);
     }
 
     final uri = SupabaseConfig.restBase.replace(
@@ -131,11 +134,11 @@ class SupabaseRestClient {
       }
       return _decode(response, method: method, uri: uri);
     } on TimeoutException {
-      throw const ApiException(statusCode: 0, message: _networkMessage);
+      throw ApiException(statusCode: 0, message: _networkMessage);
     } on ApiException {
       rethrow;
     } catch (_) {
-      throw const ApiException(statusCode: 0, message: _networkMessage);
+      throw ApiException(statusCode: 0, message: _networkMessage);
     }
   }
 

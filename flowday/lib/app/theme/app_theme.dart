@@ -68,10 +68,16 @@ class AppTheme {
     );
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.white,
+      // `cardColor` vaut par défaut la surface Material 3 (légèrement
+      // teintée) : on force un blanc net pour les cartes et les feuilles.
+      cardColor: AppColors.white,
+      dialogTheme: const DialogThemeData(backgroundColor: AppColors.white),
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.dark,
         secondary: AppColors.dark,
         surface: AppColors.white,
+        // Évite le voile lavande appliqué aux surfaces élevées en M3.
+        surfaceTint: Colors.transparent,
         onSurface: AppColors.text,
       ),
       textTheme: base.textTheme.apply(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/l10n/app_localizations.dart';
 import '../core/providers/tasks_provider.dart';
 import '../core/providers/theme_provider.dart';
 import '../features/account/presentation/profile_screen.dart';
@@ -65,10 +66,12 @@ class _HomeShellState extends State<HomeShell> {
     final ok = await context.read<TasksProvider>().toggle(task);
     if (!mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-        content: Text('Action impossible pour le moment. Réessayez.'),
+        duration: const Duration(seconds: 2),
+        content: Text(
+          context.tr('Action impossible pour le moment. Réessayez.'),
+        ),
       ),
     );
   }

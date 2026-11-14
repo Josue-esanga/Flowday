@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import '../core/l10n/app_localizations.dart';
 import '../core/providers/auth_deep_links.dart';
 import '../core/providers/auth_provider.dart';
+import '../core/providers/locale_provider.dart';
+import '../core/providers/onboarding_provider.dart';
 import '../core/providers/theme_provider.dart';
 import '../core/providers/tasks_provider.dart';
 import '../features/auth/presentation/auth_screen.dart';
+import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../shared/data/task_repository.dart';
 import '../shared/widgets/flowday_logo.dart';
 import 'home_shell.dart';
@@ -36,12 +41,20 @@ class FlowdayApp extends StatefulWidget {
 class _FlowdayAppState extends State<FlowdayApp> {
   late final AuthProvider _auth;
   late final ThemeProvider _theme;
+  late final LocaleProvider _locale;
+  late final OnboardingProvider _onboarding;
   AuthDeepLinks? _deepLinks;
 
   @override
   void initState() {
     super.initState();
     _theme = ThemeProvider()..restore();
+    _locale = LocaleProvider()..restore();
+    // En test, une session est injectée : on ne montre pas l'onboarding.
+    _onboarding = OnboardingProvider(
+      initialValue: widget.auth == null ? null : true,
+    );
+    if (widget.auth == null) _onboarding.restore();
     if (widget.auth != null) {
       // Session injectée (tests) : aucune restauration, aucun lien.
       _auth = widget.auth!;
@@ -60,6 +73,8 @@ class _FlowdayAppState extends State<FlowdayApp> {
   void dispose() {
     _deepLinks?.dispose();
     _theme.dispose();
+    _locale.dispose();
+    _onboarding.dispose();
     super.dispose();
   }
 
@@ -69,23 +84,47 @@ class _FlowdayAppState extends State<FlowdayApp> {
       providers: [
         ChangeNotifierProvider<AuthProvider>.value(value: _auth),
         ChangeNotifierProvider<ThemeProvider>.value(value: _theme),
+        ChangeNotifierProvider<LocaleProvider>.value(value: _locale),
+        ChangeNotifierProvider<OnboardingProvider>.value(value: _onboarding),
         ChangeNotifierProvider<TasksProvider>(
           create: (_) => TasksProvider(
             repository: widget.repository ?? TaskRepository(auth: _auth),
           ),
         ),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, appearance, _) => MaterialApp(
+      child: Consumer2<ThemeProvider, LocaleProvider>(
+        builder: (context, appearance, locale, _) => MaterialApp(
           title: 'Flowday',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: appearance.isDark ? ThemeMode.dark : ThemeMode.light,
-          home: const _AuthGate(),
+          locale: locale.locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const _RootGate(),
         ),
       ),
     );
+  }
+}
+
+/// Porte d'entrée : onboarding au premier lancement, puis écran de
+/// connexion ou coque principale selon la session.
+class _RootGate extends StatelessWidget {
+  const _RootGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final onboarding = context.watch<OnboardingProvider>();
+    if (onboarding.isLoading) return const _Splash();
+    if (onboarding.needsOnboarding) return const OnboardingScreen();
+    return const _AuthGate();
   }
 }
 

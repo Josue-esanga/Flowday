@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import 'auth_login_view.dart';
 import 'auth_signup_view.dart';
@@ -77,12 +78,14 @@ class _AuthScreenState extends State<AuthScreen> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 6),
+          duration: const Duration(seconds: 6),
           content: Text(
-            'Un e-mail de confirmation vient de vous être envoyé. '
-            'Cliquez sur le lien, puis connectez-vous.',
+            context.tr(
+              'Un e-mail de confirmation vient de vous être envoyé. '
+              'Cliquez sur le lien, puis connectez-vous.',
+            ),
           ),
         ),
       );

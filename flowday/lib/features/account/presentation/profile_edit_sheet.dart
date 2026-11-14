@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../shared/widgets/avatar.dart';
 
@@ -123,7 +124,9 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
     final firstName = _firstName.text.trim();
     final lastName = _lastName.text.trim();
     if (firstName.isEmpty || lastName.isEmpty) {
-      setState(() => _error = 'Le prénom et le nom sont obligatoires.');
+      setState(
+        () => _error = context.tr('Le prénom et le nom sont obligatoires.'),
+      );
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -148,10 +151,15 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final isDark = theme.brightness == Brightness.dark;
+    final sheetButtonColor = isDark ? theme.cardColor : Colors.white;
+    final sheetBorderColor = isDark ? theme.dividerColor : AppColors.divider;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: theme.cardColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Padding(
@@ -179,46 +187,49 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Modifier le profil',
+                          l10n.t('Modifier le profil'),
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF111827),
+                            color: theme.colorScheme.onSurface,
                             letterSpacing: -0.5,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'Mettez à jour vos coordonnées personnelles',
+                          l10n.t('Mettez à jour vos coordonnées personnelles'),
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF6B7280),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.62,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Fermer',
+                    tooltip: l10n.t('Fermer'),
                     onPressed: auth.busy ? null : () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFF3F4F6),
-                      foregroundColor: const Color(0xFF374151),
+                      backgroundColor: sheetButtonColor,
+                      foregroundColor: theme.colorScheme.onSurface,
+                      side: BorderSide(color: sheetBorderColor),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Photo de profil',
+              Text(
+                l10n.t('Photo de profil'),
                 style: TextStyle(
-                  color: Color(0xFF374151),
+                  color: theme.colorScheme.onSurface,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -247,17 +258,20 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                           ),
                         ),
                         Material(
-                          color: AppColors.dark,
-                          shape: const CircleBorder(),
+                          color: sheetButtonColor,
+                          elevation: 1,
+                          shape: CircleBorder(
+                            side: BorderSide(color: sheetBorderColor),
+                          ),
                           child: InkWell(
                             customBorder: const CircleBorder(),
                             onTap: auth.busy ? null : _choosePhoto,
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
                               child: Icon(
                                 Icons.camera_alt_outlined,
                                 size: 17,
-                                color: Colors.white,
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
                           ),
@@ -268,8 +282,9 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                     TextButton(
                       onPressed: auth.busy ? null : _choosePhoto,
                       style: TextButton.styleFrom(
-                        backgroundColor: const Color(0xFFF3F4F6),
-                        foregroundColor: const Color(0xFF1F2937),
+                        backgroundColor: sheetButtonColor,
+                        foregroundColor: theme.colorScheme.onSurface,
+                        side: BorderSide(color: sheetBorderColor),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
@@ -277,8 +292,8 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                       ),
                       child: Text(
                         _avatar == null
-                            ? 'Ajouter une photo'
-                            : 'Changer la photo',
+                            ? l10n.t('Ajouter une photo')
+                            : l10n.t('Changer la photo'),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -289,18 +304,20 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                       TextButton(
                         onPressed: auth.busy ? null : _removePhoto,
                         style: TextButton.styleFrom(
+                          backgroundColor: sheetButtonColor,
                           foregroundColor: AppColors.personal,
+                          side: BorderSide(color: sheetBorderColor),
                         ),
-                        child: const Text('Retirer la photo'),
+                        child: Text(l10n.t('Retirer la photo')),
                       ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Informations personnelles',
+              Text(
+                l10n.t('Informations personnelles'),
                 style: TextStyle(
-                  color: Color(0xFF374151),
+                  color: theme.colorScheme.onSurface,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -322,8 +339,8 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                   ),
                   child: Text(
                     _error!,
-                    style: const TextStyle(
-                      color: AppColors.text,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -332,21 +349,21 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                 const SizedBox(height: 14),
               ],
               _buildField(
-                label: 'Prénom',
+                label: l10n.t('Prénom'),
                 controller: _firstName,
                 icon: Icons.person_outline_rounded,
                 keyboardType: TextInputType.name,
               ),
               const SizedBox(height: 14),
               _buildField(
-                label: 'Nom',
+                label: l10n.t('Nom'),
                 controller: _lastName,
                 icon: Icons.person_outline_rounded,
                 keyboardType: TextInputType.name,
               ),
               const SizedBox(height: 14),
               _buildField(
-                label: 'Adresse e-mail',
+                label: l10n.t('Adresse e-mail'),
                 controller: _email,
                 icon: Icons.mail_outline_rounded,
                 keyboardType: TextInputType.emailAddress,
@@ -358,29 +375,31 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                 height: 52,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.dark,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: AppColors.dark.withValues(
-                      alpha: 0.5,
-                    ),
-                    elevation: 0,
+                    backgroundColor: sheetButtonColor,
+                    foregroundColor: theme.colorScheme.onSurface,
+                    disabledBackgroundColor: sheetButtonColor,
+                    disabledForegroundColor: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.4),
+                    elevation: 1,
+                    shadowColor: Colors.black.withValues(alpha: 0.08),
+                    side: BorderSide(color: sheetBorderColor),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(26),
                     ),
                   ),
                   onPressed: auth.busy ? null : _save,
                   label: auth.busy
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: theme.colorScheme.onSurface,
                           ),
                         )
-                      : const Text(
-                          'Enregistrer les modifications',
-                          style: TextStyle(
+                      : Text(
+                          l10n.t('Enregistrer les modifications'),
+                          style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -419,6 +438,7 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
     TextInputType keyboardType = TextInputType.text,
     bool enabled = true,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -426,10 +446,10 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
           padding: const EdgeInsets.only(left: 2),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF374151),
+              color: colors.onSurface,
             ),
           ),
         ),
@@ -460,21 +480,30 @@ class _SheetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.field,
+        color: isDark ? theme.colorScheme.surface : AppColors.field,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.6)),
       ),
       child: TextField(
         controller: controller,
         enabled: enabled,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.text, fontSize: 14.5),
+        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14.5),
         decoration: InputDecoration(
           hintText: '—',
-          hintStyle: const TextStyle(color: Colors.black26, fontSize: 14),
-          prefixIcon: Icon(icon, color: Colors.black54, size: 20),
+          hintStyle: TextStyle(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            icon,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+            size: 20,
+          ),
           prefixIconConstraints: const BoxConstraints(minWidth: 46),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(

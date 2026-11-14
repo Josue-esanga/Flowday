@@ -12,8 +12,7 @@ void _noop(DateTime _) {}
 void main() {
   final now = DateTime.now();
   final monthLabel = '${FlowDates.months[now.month - 1]} ${now.year}';
-  final summaryLabel =
-      '${FlowDates.weekdayName(now)}, ${FlowDates.months[now.month - 1]} ${now.day}';
+  final summaryLabel = FlowDates.summaryDate(now);
 
   // Vérifie que la page calendrier ne déborde sur aucune taille d'écran.
   const sizes = <String, Size>{
@@ -47,6 +46,11 @@ void main() {
       expect(find.text('Calendrier'), findsOneWidget);
       expect(find.text(monthLabel), findsOneWidget);
       expect(find.text('${now.day}'), findsOneWidget);
+      // Repère visible : une tâche est prévue aujourd'hui.
+      expect(
+        find.byKey(ValueKey('calendar-task-marker-${now.day}')),
+        findsOneWidget,
+      );
 
       // Défilement jusqu'au résumé du jour (données API).
       await tester.scrollUntilVisible(

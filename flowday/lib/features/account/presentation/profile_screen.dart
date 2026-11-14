@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../core/ui/confirm_sign_out.dart';
@@ -71,7 +72,7 @@ class ProfileScreen extends StatelessWidget {
     if (auth.fullName.isNotEmpty) return auth.fullName;
     final email = auth.email ?? '';
     final local = email.split('@').first;
-    return local.isEmpty ? 'Votre profil' : local;
+    return local.isEmpty ? AppLocalizations.instance.t('Votre profil') : local;
   }
 
   /// Ouvre la feuille d'édition puis confirme l'enregistrement.
@@ -82,9 +83,9 @@ class ProfileScreen extends StatelessWidget {
     messenger
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Profil mis à jour.'),
+          content: Text(context.tr('Profil mis à jour.')),
         ),
       );
   }
@@ -121,6 +122,7 @@ class ProfileScreen extends StatelessWidget {
           .toList(),
     });
 
+    final l10n = AppLocalizations.of(context);
     Clipboard.setData(ClipboardData(text: payload));
     messenger
       ..clearSnackBars()
@@ -129,9 +131,8 @@ class ProfileScreen extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
           content: Text(
             byId.isEmpty
-                ? 'Aucune tâche à exporter.'
-                : '${byId.length} tâche(s) copiée(s) dans le presse-papiers '
-                      '(JSON).',
+                ? l10n.t('Aucune tâche à exporter.')
+                : l10n.exportedTasks(byId.length),
           ),
         ),
       );
@@ -141,15 +142,16 @@ class ProfileScreen extends StatelessWidget {
   /// l'écran de connexion).
   Future<void> _signOut(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     if (!await confirmSignOut(context)) return;
     if (!context.mounted) return;
     await context.read<AuthProvider>().signOut();
     messenger
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Vous êtes déconnecté.'),
+          content: Text(l10n.t('Vous êtes déconnecté.')),
         ),
       );
   }
@@ -232,9 +234,9 @@ class _ProfileTopArea extends StatelessWidget {
           Positioned(
             top: topPadding + 22,
             left: 24,
-            child: const Text(
-              'Profil',
-              style: TextStyle(
+            child: Text(
+              context.tr('Profil'),
+              style: const TextStyle(
                 fontFamily: 'DancingScript',
                 fontVariations: [FontVariation('wght', 700)],
                 color: Colors.white,
@@ -389,11 +391,14 @@ class _ProfileStatistics extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                error ?? 'Statistiques indisponibles.',
+                error ?? context.tr('Statistiques indisponibles.'),
                 style: const TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             ),
-            TextButton(onPressed: onRetry, child: const Text('Réessayer')),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(context.tr('Réessayer')),
+            ),
           ],
         ),
       );
@@ -413,7 +418,7 @@ class _ProfileStatistics extends StatelessWidget {
             child: _ProfileStatItem(
               icon: Icons.task_alt_rounded,
               value: '${stats!.completedTasks}',
-              label: 'Terminées',
+              label: context.tr('Terminées'),
             ),
           ),
           const _ProfileVerticalDivider(),
@@ -421,7 +426,7 @@ class _ProfileStatistics extends StatelessWidget {
             child: _ProfileStatItem(
               icon: Icons.star_border_rounded,
               value: rateLabel,
-              label: 'Réussite',
+              label: context.tr('Réussite'),
             ),
           ),
           const _ProfileVerticalDivider(),
@@ -429,7 +434,7 @@ class _ProfileStatistics extends StatelessWidget {
             child: _ProfileStatItem(
               icon: Icons.bar_chart_rounded,
               value: '${stats!.tasksThisWeek}',
-              label: 'Cette semaine',
+              label: context.tr('Cette semaine'),
             ),
           ),
         ],
@@ -512,7 +517,7 @@ class _PersonalInformationCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Informations personnelles',
+                  context.tr('Informations personnelles'),
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
@@ -523,7 +528,7 @@ class _PersonalInformationCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 15),
-                label: const Text('Modifier'),
+                label: Text(context.tr('Modifier')),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.dark,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -538,13 +543,13 @@ class _PersonalInformationCard extends StatelessWidget {
           const SizedBox(height: 15),
           _ProfileInfoRow(
             icon: Icons.badge_outlined,
-            label: 'Nom complet',
+            label: context.tr('Nom complet'),
             value: name,
           ),
           const SizedBox(height: 12),
           _ProfileInfoRow(
             icon: Icons.mail_outline,
-            label: 'Adresse e-mail',
+            label: context.tr('Adresse e-mail'),
             value: email,
           ),
         ],
@@ -617,16 +622,16 @@ class _ProfileSettingsCard extends StatelessWidget {
           if (onOpenSettings != null) ...[
             _ProfileActionTile(
               icon: Icons.settings_outlined,
-              title: 'Paramètres',
-              subtitle: 'Notifications, apparence et langue',
+              title: context.tr('Paramètres'),
+              subtitle: context.tr('Notifications, apparence et langue'),
               onTap: onOpenSettings!,
             ),
             const Divider(height: 1, indent: 58, color: AppColors.divider),
           ],
           _ProfileActionTile(
             icon: Icons.download_outlined,
-            title: 'Exporter mes tâches',
-            subtitle: 'Copier une sauvegarde au format JSON',
+            title: context.tr('Exporter mes tâches'),
+            subtitle: context.tr('Copier une sauvegarde au format JSON'),
             onTap: onExport,
           ),
         ],
@@ -718,7 +723,7 @@ class _LogoutButton extends StatelessWidget {
       child: ElevatedButton.icon(
         onPressed: onTap,
         icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 19),
-        label: const Text('Se déconnecter'),
+        label: Text(context.tr('Se déconnecter')),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.dark,
           foregroundColor: Colors.white,

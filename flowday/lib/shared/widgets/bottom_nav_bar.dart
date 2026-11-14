@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
 
-/// Barre de navigation inférieure du design de référence :
-/// 4 destinations + bouton (+) central en cercle sombre cerclé de clair.
-///
-/// Destinations : Accueil, Calendrier, [+] Ajouter, Paramètres, Profil.
-/// L'onglet actif est en sombre avec une pastille dessous.
+/// Barre de navigation Flowday : 4 destinations + bouton d'ajout central.
 class BottomNavBar extends StatelessWidget {
   const BottomNavBar({
     super.key,
@@ -15,7 +11,6 @@ class BottomNavBar extends StatelessWidget {
     required this.onAdd,
   });
 
-  /// Index de l'onglet actif (0 à 3, le bouton + n'est pas un onglet).
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final VoidCallback onAdd;
@@ -49,8 +44,8 @@ class BottomNavBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(_icons.length + 1, (position) {
-            // Position 2 : bouton d'ajout central.
             if (position == 2) {
+              final isDark = theme.brightness == Brightness.dark;
               return GestureDetector(
                 onTap: onAdd,
                 behavior: HitTestBehavior.opaque,
@@ -58,19 +53,26 @@ class BottomNavBar extends StatelessWidget {
                   width: 65,
                   height: 65,
                   decoration: BoxDecoration(
-                    color: AppColors.dark,
+                    color: isDark ? Colors.white : AppColors.dark,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.navBorder, width: 5),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF5A5E68)
+                          : AppColors.navBorder,
+                      width: 5,
+                    ),
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 32),
+                  child: Icon(
+                    Icons.add,
+                    color: isDark ? AppColors.dark : Colors.white,
+                    size: 32,
+                  ),
                 ),
               );
             }
 
-            // Les autres positions : 0, 1, 3, 4 -> onglets 0..3.
             final tabIndex = position < 2 ? position : position - 1;
             final selected = selectedIndex == tabIndex;
-
             return InkResponse(
               onTap: () => onSelected(tabIndex),
               radius: 26,

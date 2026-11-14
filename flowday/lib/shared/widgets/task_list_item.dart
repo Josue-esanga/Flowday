@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../core/l10n/app_localizations.dart';
 
 /// Carte de tâche de la liste (style du design de référence) :
 /// case carrée sombre, titre + sous-titre, pastille ou heure à droite.
@@ -52,8 +53,8 @@ class TaskListItem extends StatelessWidget {
             Semantics(
               button: true,
               label: completed
-                  ? 'Tâche terminée : $title'
-                  : 'Terminer : $title',
+                  ? AppLocalizations.of(context).taskCompletedSemantics(title)
+                  : AppLocalizations.of(context).taskToCompleteSemantics(title),
               child: InkWell(
                 onTap: onToggle ?? onTap,
                 borderRadius: BorderRadius.circular(12),

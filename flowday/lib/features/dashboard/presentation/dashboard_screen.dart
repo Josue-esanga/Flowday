@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../core/ui/states/error_state.dart';
@@ -68,6 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Consumer<TasksProvider>(
       builder: (context, state, _) {
         final theme = Theme.of(context);
+        final l10n = context.l10n;
         if (state.loading) {
           // Chargement « skeleton » : l'en-tête reste visible et le
           // contenu à venir est esquimmé (perception de démarrage rapide).
@@ -107,7 +109,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : state.yesterdayTasks;
         final categories = searching
             ? state.categories
-                  .where((c) => c.name.toLowerCase().contains(query))
+                  .where(
+                    (c) => categoryDisplayName(
+                      context,
+                      c,
+                    ).toLowerCase().contains(query),
+                  )
                   .toList()
             : state.categories;
         final noResults =
@@ -131,7 +138,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
                 child: Container(
-                  height: 65,
+                  constraints: const BoxConstraints(minHeight: 60),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: theme.brightness == Brightness.dark
@@ -158,12 +165,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             color: theme.colorScheme.onSurface,
                             fontSize: 17,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
-                            hintText: 'Search',
-                            hintStyle: TextStyle(
+                            hintText: l10n.t('Rechercher'),
+                            hintStyle: const TextStyle(
                               color: AppColors.placeholderText,
                               fontSize: 17,
                             ),
@@ -208,7 +215,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Aucun résultat pour « ${_query.trim()} »',
+                        l10n.searchNoResults(_query.trim()),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.muted,
@@ -224,15 +231,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // catégorie (carte entière cliquable)
                 // ------------------------------------------------------------
                 if (categories.isNotEmpty || !searching) ...[
-                  const SectionTitle(title: 'Categories', action: 'All'),
+                  SectionTitle(title: l10n.t('Catégories')),
                   const SizedBox(height: 18),
                   if (categories.isEmpty)
-                    const SizedBox(
+                    SizedBox(
                       height: 120,
                       child: Center(
                         child: Text(
-                          'Aucune catégorie',
-                          style: TextStyle(
+                          l10n.t('Aucune catégorie'),
+                          style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 14,
                           ),
@@ -248,15 +255,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         itemCount: categories.length,
                         itemBuilder: (context, index) {
                           final category = categories[index];
-                          final info = categoryInfo[category.id];
                           return Padding(
                             padding: EdgeInsets.only(
                               right: index == categories.length - 1 ? 0 : 14,
                             ),
                             child: _CategoryCard(
-                              title: category.name,
-                              description: info?.$1 ?? category.name,
-                              icon: info?.$2 ?? Icons.label_outline,
+                              title: categoryDisplayName(context, category),
+                              description: categoryDisplayDescription(
+                                context,
+                                category,
+                              ),
+                              icon: categoryIcon(category.id),
                               dark: index == 0,
                               onTap: () => widget.onOpenCategory(category),
                             ),
@@ -272,13 +281,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // ------------------------------------------------------------
                 if (today.isNotEmpty || !searching) ...[
                   SectionTitle(
-                    title: "Today's task",
-                    action: 'See all',
+                    title: l10n.t('Tâche du jour'),
+                    action: l10n.t('Tout voir'),
                     onAction: () => widget.onSeeAll(DateTime.now()),
                   ),
                   const SizedBox(height: 15),
                   if (today.isEmpty)
-                    const _EmptyLine(text: 'Aucune tâche pour ce jour')
+                    _EmptyLine(text: l10n.t('Aucune tâche pour ce jour'))
                   else
                     for (final task in today)
                       TaskListItem(
@@ -305,15 +314,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // ------------------------------------------------------------
                 if (yesterday.isNotEmpty || !searching) ...[
                   SectionTitle(
-                    title: "Yesterday's task",
-                    action: 'See all',
+                    title: l10n.t('Tâche d’hier'),
+                    action: l10n.t('Tout voir'),
                     onAction: () => widget.onSeeAll(
                       DateTime.now().subtract(const Duration(days: 1)),
                     ),
                   ),
                   const SizedBox(height: 15),
                   if (yesterday.isEmpty)
-                    const _EmptyLine(text: 'Aucune tâche hier')
+                    _EmptyLine(text: l10n.t('Aucune tâche hier'))
                   else
                     for (final task in yesterday)
                       TaskListItem(
@@ -354,6 +363,7 @@ class _DashboardHeader extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     final auth = context.watch<AuthProvider>();
     final firstName = _firstName(auth);
+    final l10n = context.l10n;
 
     return Container(
       height: 225 + topPadding,
@@ -375,7 +385,7 @@ class _DashboardHeader extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Hey $firstName !',
+                      l10n.greeting(firstName),
                       style: const TextStyle(
                         fontFamily: 'DancingScript',
                         fontVariations: [FontVariation('wght', 700)],
@@ -397,9 +407,9 @@ class _DashboardHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 15),
-              const Text(
-                "Let's find your\nbest day!",
-                style: TextStyle(
+              Text(
+                l10n.t('Trouvons\nvotre meilleure journée !'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 25,
                   height: 1.2,
@@ -466,14 +476,17 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardWidth = (screenWidth - 48).clamp(220.0, 320.0).toDouble();
+    final compact = cardWidth < 260;
     final Color foreground = dark ? Colors.white : theme.colorScheme.onSurface;
 
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 245,
-        padding: const EdgeInsets.all(22),
+        width: cardWidth,
+        padding: EdgeInsets.all(compact ? 17 : 22),
         decoration: BoxDecoration(
           color: dark ? AppColors.dark : theme.cardColor,
           borderRadius: BorderRadius.circular(38),
@@ -482,26 +495,26 @@ class _CategoryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 58,
-              height: 58,
+              width: compact ? 50 : 58,
+              height: compact ? 50 : 58,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: AppColors.dark, size: 31),
+              child: Icon(icon, color: AppColors.dark, size: compact ? 27 : 31),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: compact ? 14 : 20),
             Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: foreground,
-                fontSize: 19,
+                fontSize: compact ? 17 : 19,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: compact ? 10 : 16),
             Text(
               description,
               maxLines: 2,
@@ -510,7 +523,7 @@ class _CategoryCard extends StatelessWidget {
                 color: dark
                     ? Colors.white70
                     : theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                fontSize: 17,
+                fontSize: compact ? 14 : 16,
                 height: 1.4,
               ),
             ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/errors/api_exception.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../core/ui/states/error_state.dart';
 import '../../../shared/models/models.dart';
@@ -58,7 +59,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Impossible de contacter le serveur.';
+        _error = context.tr('Impossible de contacter le serveur.');
         _loading = false;
       });
     }
@@ -74,13 +75,14 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
 
   String get _countLabel {
     final count = _tasks?.length ?? 0;
-    return '$count tâche${count > 1 ? 's' : ''}';
+    return AppLocalizations.instance.nTasks(count);
   }
 
   @override
   Widget build(BuildContext context) {
     final category = widget.category;
     final topPadding = MediaQuery.of(context).padding.top;
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -115,7 +117,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        category.name,
+                        categoryDisplayName(context, category),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -124,7 +126,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _loading ? 'Chargement…' : _countLabel,
+                        _loading ? l10n.t('Chargement…') : _countLabel,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 13,
@@ -171,7 +173,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
     if (tasks.isEmpty) {
       return Center(
         child: Text(
-          'Aucune tâche dans cette catégorie',
+          context.tr('Aucune tâche dans cette catégorie'),
           style: TextStyle(
             color: colors.onSurface.withValues(alpha: 0.65),
             fontSize: 14,
@@ -205,8 +207,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '${entry.value.length} tâche'
-                  '${entry.value.length > 1 ? 's' : ''}',
+                  AppLocalizations.instance.nTasks(entry.value.length),
                   style: TextStyle(
                     color: colors.onSurface.withValues(alpha: 0.65),
                     fontSize: 13,

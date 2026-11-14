@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../../core/errors/api_exception.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../core/network/supabase_auth_client.dart';
 import '../../core/network/supabase_rest_client.dart';
 import '../models/models.dart';
@@ -24,9 +25,9 @@ class TaskRepository {
   final SupabaseRestClient _client;
 
   /// 404 : la mutation n'a touché aucune ligne (déjà supprimée / inexistante).
-  static const ApiException _notFound = ApiException(
+  ApiException get _notFound => ApiException(
     statusCode: 404,
-    message: 'Tâche introuvable.',
+    message: AppLocalizations.instance.t('Tâche introuvable.'),
   );
 
   /// Colonnes d'une tâche + catégorie embarquée.
@@ -97,9 +98,9 @@ class TaskRepository {
       },
     );
     if (rows.isEmpty) {
-      throw const ApiException(
+      throw ApiException(
         statusCode: 400,
-        message: "La tâche n'a pas pu être créée.",
+        message: AppLocalizations.instance.t("La tâche n'a pas pu être créée."),
       );
     }
     return _taskFromRow(rows.first);

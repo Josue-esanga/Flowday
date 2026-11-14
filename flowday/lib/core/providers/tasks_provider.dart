@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../shared/data/task_repository.dart';
 import '../../shared/models/models.dart';
 import '../../shared/utils/date_utils.dart';
 import '../errors/api_exception.dart';
+import '../l10n/app_localizations.dart';
+import '../services/task_reminder_service.dart';
 
 /// État global des tâches et catégories (couche état, README §7).
 ///
@@ -22,6 +26,11 @@ class TasksProvider extends ChangeNotifier {
   List<TaskItem> dayTasks = [];
   ProfileStats? stats;
   final Set<String> _pendingTaskToggles = {};
+
+  /// Nombre de tâches connues par jour, pour les mois déjà chargés par le
+  /// calendrier. La carte est mise à jour après chaque mutation locale.
+  final Map<String, Map<String, int>> _calendarTaskCounts = {};
+  final Set<String> _calendarLoadingMonths = {};
 
   // Jour sélectionné (timeline + calendrier).
   DateTime selectedDate = DateTime.now();
@@ -42,6 +51,8 @@ class TasksProvider extends ChangeNotifier {
   Future<void> loadInitial() async {
     loading = true;
     error = null;
+    _calendarTaskCounts.clear();
+    _calendarLoadingMonths.clear();
     notifyListeners();
     try {
       categories = await repository.fetchCategories();
@@ -54,15 +65,93 @@ class TasksProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       error = e.message;
     } catch (_) {
-      error = 'Impossible de contacter le serveur.';
+      error = AppLocalizations.instance.t(
+        'Impossible de contacter le serveur.',
+      );
     } finally {
       loading = false;
       notifyListeners();
+    }
+    unawaited(syncReminders());
+  }
+
+  /// Programme les rappels des tâches des 90 prochains jours.
+  Future<void> syncReminders() async {
+    final reminders = TaskReminderService.instance;
+    if (!reminders.isEnabled) return;
+    try {
+      final today = DateTime.now();
+      final tasks = await repository.fetchTasks(
+        start: FlowDates.apiDate(today),
+        end: FlowDates.apiDate(today.add(const Duration(days: 90))),
+      );
+      await reminders.replaceScheduledTasks(tasks.take(400).toList());
+    } catch (_) {
+      // Les rappels seront recalculés au prochain chargement réussi.
     }
   }
 
   /// Recharge tout (bouton « Réessayer »).
   Future<void> retry() => loadInitial();
+
+  // ---------------------------------------------------------------------
+  // Calendrier — repères des jours qui contiennent des tâches
+  // ---------------------------------------------------------------------
+  String _calendarMonthKey(int year, int month) =>
+      '$year-${month.toString().padLeft(2, '0')}';
+
+  bool isCalendarMonthLoaded(int year, int month) =>
+      _calendarTaskCounts.containsKey(_calendarMonthKey(year, month));
+
+  /// Vrai si au moins une tâche est prévue ce jour-là (mois chargé).
+  bool hasTasksOn(DateTime date) {
+    final counts =
+        _calendarTaskCounts[_calendarMonthKey(date.year, date.month)];
+    return (counts?[FlowDates.apiDate(date)] ?? 0) > 0;
+  }
+
+  /// Charge les tâches du mois affiché, une seule fois (cache local).
+  Future<void> ensureCalendarMonth(int year, int month) async {
+    final key = _calendarMonthKey(year, month);
+    if (_calendarTaskCounts.containsKey(key) ||
+        !_calendarLoadingMonths.add(key)) {
+      return;
+    }
+
+    try {
+      final first = DateTime(year, month, 1);
+      final last = DateTime(year, month + 1, 0);
+      final tasks = await repository.fetchTasks(
+        start: FlowDates.apiDate(first),
+        end: FlowDates.apiDate(last),
+      );
+      final counts = <String, int>{};
+      for (final task in tasks) {
+        counts.update(task.date, (value) => value + 1, ifAbsent: () => 1);
+      }
+      _calendarTaskCounts[key] = counts;
+      notifyListeners();
+    } catch (_) {
+      // Le calendrier reste utilisable sans repères ; une prochaine
+      // ouverture du mois retentera le chargement.
+    } finally {
+      _calendarLoadingMonths.remove(key);
+    }
+  }
+
+  void _bumpCalendarDay(String date, int delta) {
+    final parsed = DateTime.tryParse(date);
+    if (parsed == null) return;
+    final counts =
+        _calendarTaskCounts[_calendarMonthKey(parsed.year, parsed.month)];
+    if (counts == null) return;
+    final next = (counts[date] ?? 0) + delta;
+    if (next <= 0) {
+      counts.remove(date);
+    } else {
+      counts[date] = next;
+    }
+  }
 
   // ---------------------------------------------------------------------
   // F1 / F2 — changer de jour (timeline et calendrier partagent la date)
@@ -78,7 +167,9 @@ class TasksProvider extends ChangeNotifier {
       dayError = e.message;
       dayTasks = [];
     } catch (_) {
-      dayError = 'Impossible de contacter le serveur.';
+      dayError = AppLocalizations.instance.t(
+        'Impossible de contacter le serveur.',
+      );
       dayTasks = [];
     } finally {
       dayLoading = false;
@@ -121,8 +212,10 @@ class TasksProvider extends ChangeNotifier {
       categoryId: categoryId,
     );
     _insert(task);
+    _bumpCalendarDay(task.date, 1);
     _adjustStats(totalDelta: 1, completedDelta: task.completed ? 1 : 0);
     notifyListeners();
+    unawaited(syncReminders());
   }
 
   // ---------------------------------------------------------------------
@@ -146,7 +239,10 @@ class TasksProvider extends ChangeNotifier {
     );
     _removeById(updated.id);
     _insert(updated);
+    _bumpCalendarDay(task.date, -1);
+    _bumpCalendarDay(updated.date, 1);
     notifyListeners();
+    unawaited(syncReminders());
   }
 
   // ---------------------------------------------------------------------
@@ -155,8 +251,10 @@ class TasksProvider extends ChangeNotifier {
   Future<void> deleteTask(TaskItem task) async {
     await repository.deleteTask(task.id);
     _removeById(task.id);
+    _bumpCalendarDay(task.date, -1);
     _adjustStats(totalDelta: -1, completedDelta: task.completed ? -1 : 0);
     notifyListeners();
+    unawaited(syncReminders());
   }
 
   // ---------------------------------------------------------------------
@@ -180,6 +278,7 @@ class TasksProvider extends ChangeNotifier {
             : -1,
       );
       notifyListeners();
+      unawaited(syncReminders());
       return true;
     } catch (_) {
       // Annulation de l'optimisme en cas d'échec (les stats n'ont été
@@ -216,6 +315,8 @@ class TasksProvider extends ChangeNotifier {
     dayTasks = [];
     stats = null;
     _pendingTaskToggles.clear();
+    _calendarTaskCounts.clear();
+    _calendarLoadingMonths.clear();
     selectedDate = DateTime.now();
     loading = false;
     error = null;

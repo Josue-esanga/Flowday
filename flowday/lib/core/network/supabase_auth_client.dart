@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../errors/api_exception.dart';
+import '../l10n/app_localizations.dart';
 import 'supabase_config.dart';
 
 /// Session Supabase (jetons GoTrue) : jeton d'accès (1 h), jeton de
@@ -118,9 +119,11 @@ class SupabaseAuthClient {
     String? bearer,
   }) async {
     if (!SupabaseConfig.isConfigured) {
-      throw const ApiException(
+      throw ApiException(
         statusCode: 0,
-        message: 'Application non configurée. Contactez le support.',
+        message: AppLocalizations.instance.t(
+          'Application non configurée. Contactez le support.',
+        ),
       );
     }
 
@@ -154,47 +157,51 @@ class SupabaseAuthClient {
       }
       return map;
     } on TimeoutException {
-      throw const ApiException(statusCode: 0, message: _networkMessage);
+      throw ApiException(statusCode: 0, message: _networkMessage);
     } on ApiException {
       rethrow;
     } catch (_) {
-      throw const ApiException(statusCode: 0, message: _networkMessage);
+      throw ApiException(statusCode: 0, message: _networkMessage);
     }
   }
 
-  static const String _networkMessage =
-      'Impossible de joindre le serveur. Vérifiez votre connexion internet, '
-      'puis réessayez.';
+  static String get _networkMessage => AppLocalizations.instance.t(
+    'Impossible de joindre le serveur. Vérifiez votre connexion internet, '
+    'puis réessayez.',
+  );
 
   /// Message d'authentification **professionnel** (aucune fuite
   /// d'information sur l'infrastructure).
   static String _errorMessage(int status, Map<String, dynamic> body) {
+    final l10n = AppLocalizations.instance;
     final code = body['error_code']?.toString() ?? '';
     final msg = body['msg']?.toString() ?? '';
     if (status == 429) {
-      return 'Trop de tentatives. Réessayez dans quelques instants.';
+      return l10n.t('Trop de tentatives. Réessayez dans quelques instants.');
     }
     if (code == 'invalid_credentials' || msg.contains('Invalid login')) {
-      return 'Adresse e-mail ou mot de passe incorrect.';
+      return l10n.t('Adresse e-mail ou mot de passe incorrect.');
     }
     if (code == 'email_not_confirmed' || msg.contains('not confirmed')) {
-      return "Veuillez confirmer votre adresse e-mail avant de vous "
-          'connecter (vérifiez votre boîte mail).';
+      return l10n.t(
+        'Veuillez confirmer votre adresse e-mail avant de vous '
+        'connecter (vérifiez votre boîte mail).',
+      );
     }
     if (code == 'user_already_exists' ||
         msg.contains('already been registered')) {
-      return 'Un compte existe déjà avec cette adresse e-mail.';
+      return l10n.t('Un compte existe déjà avec cette adresse e-mail.');
     }
     if (code == 'weak_password' || msg.contains('weak')) {
-      return 'Mot de passe trop faible : 8 caractères minimum.';
+      return l10n.t('Mot de passe trop faible : 8 caractères minimum.');
     }
     if (status == 401 || status == 403) {
-      return 'Identifiants incorrects ou accès refusé.';
+      return l10n.t('Identifiants incorrects ou accès refusé.');
     }
     if (status >= 500) {
-      return 'Le service rencontre un problème. Réessayez plus tard.';
+      return l10n.t('Le service rencontre un problème. Réessayez plus tard.');
     }
-    return 'Une erreur est survenue. Réessayez plus tard.';
+    return l10n.t('Une erreur est survenue. Réessayez plus tard.');
   }
 
   /// Inscription (e-mail + mot de passe), le nom complet part dans les
@@ -235,9 +242,11 @@ class SupabaseAuthClient {
     if (data['id'] is String || data['user'] is Map) {
       return const AuthSignupResult(confirmationSent: true);
     }
-    throw const ApiException(
+    throw ApiException(
       statusCode: 400,
-      message: "Le compte n'a pas pu être créé. Réessayez plus tard.",
+      message: AppLocalizations.instance.t(
+        "Le compte n'a pas pu être créé. Réessayez plus tard.",
+      ),
     );
   }
 
@@ -264,11 +273,12 @@ class SupabaseAuthClient {
       body: {'auth_code': authCode, 'code_verifier': codeVerifier},
     );
     if (data['access_token'] is! String) {
-      throw const ApiException(
+      throw ApiException(
         statusCode: 401,
-        message:
-            'Le lien de confirmation est invalide ou a expiré. '
-            'Demandez un nouvel e-mail puis réessayez.',
+        message: AppLocalizations.instance.t(
+          'Le lien de confirmation est invalide ou a expiré. '
+          'Demandez un nouvel e-mail puis réessayez.',
+        ),
       );
     }
     final user = data['user'];
@@ -328,9 +338,11 @@ class SupabaseAuthClient {
       body: {'email': email, 'password': password},
     );
     if (data['access_token'] is! String) {
-      throw const ApiException(
+      throw ApiException(
         statusCode: 401,
-        message: 'Adresse e-mail ou mot de passe incorrect.',
+        message: AppLocalizations.instance.t(
+          'Adresse e-mail ou mot de passe incorrect.',
+        ),
       );
     }
     return AuthSession.fromJson(data, email: email);
@@ -344,9 +356,11 @@ class SupabaseAuthClient {
       body: {'refresh_token': refreshToken},
     );
     if (data['access_token'] is! String) {
-      throw const ApiException(
+      throw ApiException(
         statusCode: 401,
-        message: 'Votre session a expiré. Veuillez vous reconnecter.',
+        message: AppLocalizations.instance.t(
+          'Votre session a expiré. Veuillez vous reconnecter.',
+        ),
       );
     }
     return AuthSession.fromJson(data, email: '');

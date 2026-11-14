@@ -83,11 +83,7 @@ class FlowdayLogoPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF292930),
-            Color(0xFF17171D),
-            Color(0xFF08080D),
-          ],
+          colors: [Color(0xFF292930), Color(0xFF17171D), Color(0xFF08080D)],
         ).createShader(const Rect.fromLTWH(5, 5, 490, 490)),
     );
 
@@ -108,23 +104,9 @@ class FlowdayLogoPainter extends CustomPainter {
 
       path.moveTo(0, y + 35);
 
-      path.cubicTo(
-        100,
-        y - 55,
-        160,
-        y - 45,
-        235,
-        y + 30,
-      );
+      path.cubicTo(100, y - 55, 160, y - 45, 235, y + 30);
 
-      path.cubicTo(
-        310,
-        y + 110,
-        380,
-        y + 75,
-        500,
-        y + 15,
-      );
+      path.cubicTo(310, y + 110, 380, y + 75, 500, y + 15);
 
       canvas.drawPath(path, wavePaint);
     }
@@ -150,11 +132,9 @@ class FlowdayLogoPainter extends CustomPainter {
       ..lineTo(375, 76)
       ..cubicTo(375, 106, 350, 133, 319, 133)
       ..lineTo(243, 133)
-
       // Courbe intérieure
       ..cubicTo(216, 133, 203, 151, 203, 178)
       ..lineTo(203, 283)
-
       // Partie inférieure du F
       ..cubicTo(203, 332, 181, 363, 138, 381)
       ..lineTo(138, 151)
@@ -213,10 +193,7 @@ class FlowdayLogoPainter extends CustomPainter {
       ..lineTo(203, 247)
       ..close();
 
-    canvas.drawPath(
-      inner,
-      Paint()..color = const Color(0xFF15151B),
-    );
+    canvas.drawPath(inner, Paint()..color = const Color(0xFF15151B));
 
     // ==========================================
     // 6. COCHE BLANCHE
@@ -283,10 +260,7 @@ class FlowdayLogoPainter extends CustomPainter {
       topRight: const Radius.circular(17),
     );
 
-    canvas.drawRRect(
-      header,
-      Paint()..color = const Color(0xFF19191F),
-    );
+    canvas.drawRRect(header, Paint()..color = const Color(0xFF19191F));
 
     // ==========================================
     // 9. ANNEAUX DU CALENDRIER
@@ -297,17 +271,9 @@ class FlowdayLogoPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    canvas.drawLine(
-      const Offset(210, 265),
-      const Offset(210, 286),
-      ringPaint,
-    );
+    canvas.drawLine(const Offset(210, 265), const Offset(210, 286), ringPaint);
 
-    canvas.drawLine(
-      const Offset(251, 265),
-      const Offset(251, 286),
-      ringPaint,
-    );
+    canvas.drawLine(const Offset(251, 265), const Offset(251, 286), ringPaint);
 
     // ==========================================
     // 10. PETITS CARRÉS DU CALENDRIER

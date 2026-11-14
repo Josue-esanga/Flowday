@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../models/models.dart';
 
 /// Une ligne de la timeline : point relié par un trait vertical, puis le
@@ -34,6 +35,19 @@ class TimelineTask extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 360;
+    final featuredColor = Theme.of(context).brightness == Brightness.dark
+        ? colors.surface
+        : AppColors.dark;
+    final lineColor = Theme.of(context).brightness == Brightness.dark
+        ? colors.outlineVariant
+        : AppColors.dark;
+    final titleColor = featured ? Colors.white : colors.onSurface;
+    final secondaryColor = featured
+        ? Colors.white70
+        : colors.onSurface.withValues(alpha: 0.62);
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -58,10 +72,12 @@ class TimelineTask extends StatelessWidget {
                       height: 17,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: (featured || completed)
-                            ? AppColors.dark
-                            : Colors.white,
-                        border: Border.all(color: AppColors.dark, width: 2),
+                        color: featured
+                            ? Colors.white
+                            : completed
+                            ? colors.primary
+                            : Colors.transparent,
+                        border: Border.all(color: colors.primary, width: 2),
                       ),
                     ),
                   ),
@@ -70,7 +86,7 @@ class TimelineTask extends StatelessWidget {
                   Expanded(
                     child: Container(
                       width: 2,
-                      color: AppColors.dark,
+                      color: lineColor,
                       margin: const EdgeInsets.symmetric(vertical: 5),
                     ),
                   ),
@@ -90,10 +106,10 @@ class TimelineTask extends StatelessWidget {
               child: Container(
                 margin: const EdgeInsets.only(bottom: 15),
                 padding: featured
-                    ? const EdgeInsets.all(20)
+                    ? EdgeInsets.all(compact ? 14 : 18)
                     : const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: featured ? AppColors.dark : Colors.transparent,
+                  color: featured ? featuredColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(35),
                 ),
                 child: Column(
@@ -105,9 +121,13 @@ class TimelineTask extends StatelessWidget {
                         Expanded(
                           child: Text(
                             title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: featured ? Colors.white : AppColors.text,
-                              fontSize: featured ? 25 : 22,
+                              color: titleColor,
+                              fontSize: featured
+                                  ? (compact ? 21 : 23)
+                                  : (compact ? 18 : 20),
                               fontWeight: FontWeight.bold,
                               decoration: completed
                                   ? TextDecoration.lineThrough
@@ -115,33 +135,37 @@ class TimelineTask extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Text(
-                          time,
-                          style: TextStyle(
-                            color: featured ? Colors.white : AppColors.muted,
-                            fontSize: 14,
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Text(
+                            time,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: secondaryColor,
+                              fontSize: compact ? 12 : 13,
+                            ),
                           ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 10),
-
-                    Text(
-                      description,
-                      style: TextStyle(
-                        color: featured ? Colors.white70 : AppColors.muted,
-                        fontSize: 15,
-                        height: 1.4,
+                    if (description.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        description,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: secondaryColor,
+                          fontSize: compact ? 13 : 14,
+                          height: 1.4,
+                        ),
                       ),
-                    ),
+                    ],
 
                     if (category != null) ...[
                       const SizedBox(height: 10),
-                      CategoryLabel(
-                        category: category!,
-                        color: featured ? Colors.white70 : null,
-                      ),
+                      CategoryLabel(category: category!, color: secondaryColor),
                     ],
 
                     if (featured) ...[
@@ -168,7 +192,9 @@ class TimelineTask extends StatelessWidget {
                           ),
                           const Spacer(),
                           Text(
-                            completed ? 'Terminée' : 'À faire',
+                            completed
+                                ? context.tr('Terminée')
+                                : context.tr('À faire'),
                             style: TextStyle(
                               color: completed ? Colors.white : Colors.white70,
                               fontSize: 14,
@@ -219,12 +245,20 @@ class CategoryLabel extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          category.name,
-          style: TextStyle(
-            color: color ?? AppColors.muted,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w500,
+        Flexible(
+          child: Text(
+            AppLocalizations.of(context)
+                .categoryName(category.id, category.name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color:
+                  color ??
+                  Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.62),
+              fontSize: fontSize,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],

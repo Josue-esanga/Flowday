@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// Erreur remontée par la couche data (Supabase/PostgREST, ou l'API
 /// Django/DRF optionnelle).
 ///
@@ -43,7 +45,9 @@ class ApiException implements Exception {
     if (statusCode == 401 || statusCode == 403) {
       return ApiException(
         statusCode: statusCode,
-        message: 'Votre session a expiré. Veuillez vous reconnecter.',
+        message: AppLocalizations.instance.t(
+          'Votre session a expiré. Veuillez vous reconnecter.',
+        ),
         details: details,
       );
     }
@@ -77,34 +81,43 @@ class ApiException implements Exception {
 
   /// Message générique, sans fuite d'information sur l'infrastructure.
   static String _genericMessage(int statusCode, Map<String, dynamic> body) {
+    final l10n = AppLocalizations.instance;
     switch (statusCode) {
       case 404:
       case 410:
-        return "Cet élément est introuvable : il a peut-être été supprimé.";
+        return l10n.t(
+          "Cet élément est introuvable : il a peut-être été supprimé.",
+        );
       case 409:
-        return 'Cet enregistrement existe déjà.';
+        return l10n.t('Cet enregistrement existe déjà.');
       case 429:
-        return 'Trop de tentatives. Réessayez dans quelques instants.';
+        return l10n.t('Trop de tentatives. Réessayez dans quelques instants.');
       case 400:
       case 422:
         switch (body['code']?.toString()) {
           case '23503':
-            return "Cette opération est impossible : la catégorie liée est "
-                'introuvable.';
+            return l10n.t(
+              "Cette opération est impossible : la catégorie liée est "
+              'introuvable.',
+            );
           case '23505':
-            return 'Cet enregistrement existe déjà.';
+            return l10n.t('Cet enregistrement existe déjà.');
           case '22001':
             // `varchar(n)` dépassé (titre de tâche) → message actionnable.
-            return 'Saisie trop longue : réduisez la taille de vos '
-                'informations, puis réessayez.';
+            return l10n.t(
+              'Saisie trop longue : réduisez la taille de vos '
+              'informations, puis réessayez.',
+            );
           default:
-            return 'Vérifiez les informations saisies, puis réessayez.';
+            return l10n.t('Vérifiez les informations saisies, puis réessayez.');
         }
       default:
         if (statusCode >= 500) {
-          return 'Le service rencontre un problème. Réessayez plus tard.';
+          return l10n.t(
+            'Le service rencontre un problème. Réessayez plus tard.',
+          );
         }
-        return 'Une erreur est survenue. Réessayez plus tard.';
+        return l10n.t('Une erreur est survenue. Réessayez plus tard.');
     }
   }
 

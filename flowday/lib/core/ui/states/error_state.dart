@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 
 /// État d'erreur plein écran : icône, message et bouton « Réessayer »
 /// (utilisé quand le serveur est injoignable ou renvoie une erreur).
@@ -39,7 +40,7 @@ class ErrorState extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: const Text('Réessayer'),
+              child: Text(context.tr('Réessayer')),
             ),
           ],
         ),

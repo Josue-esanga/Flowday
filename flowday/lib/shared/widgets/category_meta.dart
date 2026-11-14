@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
 
-/// Description et icône d'une catégorie selon son id — utilisé par les
-/// cartes de l'accueil et par l'en-tête de la page « tâches de la
-/// catégorie ». Les ids viennent de l'API (`GET /api/categories/`).
-const Map<String, (String, IconData)> categoryInfo = {
-  'personal': ('Home, family\n& daily life', Icons.person_outline),
-  'work': ('Meetings, deadlines\n& office tasks', Icons.work_outline),
-  'health': ('Sport, food\n& well-being', Icons.favorite_outline),
-  'education': ('Courses, reading\n& learning', Icons.school_outlined),
+import '../../core/l10n/app_localizations.dart';
+import '../models/models.dart';
+
+/// Icône d'une catégorie selon son id — utilisé par les cartes de
+/// l'accueil et par l'en-tête de la page « tâches de la catégorie ».
+/// Les ids viennent de l'API (`GET /api/categories/`).
+const Map<String, IconData> categoryIcons = {
+  'personal': Icons.person_outline,
+  'work': Icons.work_outline,
+  'health': Icons.favorite_outline,
+  'education': Icons.school_outlined,
 };
 
 /// Icône d'une catégorie (repli : étiquette).
-IconData categoryIcon(String id) => categoryInfo[id]?.$2 ?? Icons.label_outline;
+IconData categoryIcon(String id) => categoryIcons[id] ?? Icons.label_outline;
+
+/// Nom affiché de la catégorie, traduit pour les catégories connues.
+String categoryDisplayName(BuildContext context, Category category) =>
+    AppLocalizations.of(context).categoryName(category.id, category.name);
+
+/// Description affichée de la catégorie (repli : nom de la catégorie).
+String categoryDisplayDescription(BuildContext context, Category category) =>
+    AppLocalizations.of(context)
+        .categoryDescription(category.id, category.name);

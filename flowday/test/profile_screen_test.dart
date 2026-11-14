@@ -69,7 +69,10 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Se déconnecter'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Prêt pour une journée productive ?'), findsOneWidget); // AuthScreen
+    expect(
+      find.text('Prêt pour une journée productive ?'),
+      findsOneWidget,
+    ); // AuthScreen
     expect(find.text('Josué Esanga'), findsNothing);
     expect(find.text('Vous êtes déconnecté.'), findsOneWidget);
     await _settleSnackBars(tester);

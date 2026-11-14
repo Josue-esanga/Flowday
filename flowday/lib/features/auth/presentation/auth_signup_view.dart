@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import 'auth_widgets.dart';
 
@@ -51,24 +52,26 @@ class _SignUpViewState extends State<SignUpView> {
   }
 
   String? _validateName(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Le nom est obligatoire.';
-    if (value.trim().length < 2) return 'Nom trop court.';
+    if (value == null || value.trim().isEmpty) {
+      return context.tr('Le nom est obligatoire.');
+    }
+    if (value.trim().length < 2) return context.tr('Nom trop court.');
     return null;
   }
 
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
-    if (email.isEmpty) return 'L’adresse e-mail est obligatoire.';
+    if (email.isEmpty) return context.tr('L’adresse e-mail est obligatoire.');
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-      return 'Adresse e-mail invalide.';
+      return context.tr('Adresse e-mail invalide.');
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     final password = value ?? '';
-    if (password.isEmpty) return 'Le mot de passe est obligatoire.';
-    if (password.length < 8) return '8 caractères minimum.';
+    if (password.isEmpty) return context.tr('Le mot de passe est obligatoire.');
+    if (password.length < 8) return context.tr('8 caractères minimum.');
     return null;
   }
 
@@ -100,10 +103,12 @@ class _SignUpViewState extends State<SignUpView> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
           content: Text(
-            'Inscription Google / Apple non disponible pour le moment.',
+            context.tr(
+              'Inscription Google / Apple non disponible pour le moment.',
+            ),
           ),
         ),
       );
@@ -112,6 +117,7 @@ class _SignUpViewState extends State<SignUpView> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = context.l10n;
 
     return SingleChildScrollView(
       child: Form(
@@ -121,11 +127,12 @@ class _SignUpViewState extends State<SignUpView> {
             // ----------------------------------------------------------
             // En-tête noir full-bleed (marque cursive + accroche)
             // ----------------------------------------------------------
-            const FlowdayHeader(
-              subtitleBadge: 'Organisez votre quotidien',
-              title: 'Créer un compte',
-              description:
-                  "Structurez vos tâches et gagnez en clarté dès aujourd'hui.",
+            FlowdayHeader(
+              subtitleBadge: l10n.t('Organisez votre quotidien'),
+              title: l10n.t('Créer un compte'),
+              description: l10n.t(
+                "Structurez vos tâches et gagnez en clarté dès aujourd'hui.",
+              ),
             ),
 
             // ----------------------------------------------------------
@@ -144,7 +151,7 @@ class _SignUpViewState extends State<SignUpView> {
                   // Nom complet.
                   FloatingInputField(
                     controller: _nameController,
-                    labelText: 'Nom complet',
+                    labelText: l10n.t('Nom complet'),
                     hintText: 'Alexandre Martin',
                     prefixIcon: Icons.person_outline_rounded,
                     enabled: !auth.busy,
@@ -158,7 +165,7 @@ class _SignUpViewState extends State<SignUpView> {
                   // E-mail.
                   FloatingInputField(
                     controller: _emailController,
-                    labelText: 'Adresse email',
+                    labelText: l10n.t('Adresse email'),
                     hintText: 'alexandre@exemple.com',
                     prefixIcon: Icons.mail_outline_rounded,
                     enabled: !auth.busy,
@@ -172,8 +179,8 @@ class _SignUpViewState extends State<SignUpView> {
                   // Mot de passe (œil de visibilité).
                   FloatingInputField(
                     controller: _passwordController,
-                    labelText: 'Mot de passe',
-                    hintText: 'Minimum 8 caractères',
+                    labelText: l10n.t('Mot de passe'),
+                    hintText: l10n.t('Minimum 8 caractères'),
                     prefixIcon: Icons.lock_outline_rounded,
                     enabled: !auth.busy,
                     obscureText: _obscurePassword,
@@ -198,14 +205,14 @@ class _SignUpViewState extends State<SignUpView> {
 
                   // Bouton primaire noir (texte + flèche).
                   PrimaryFlowButton(
-                    text: 'Créer mon compte',
+                    text: l10n.t('Créer mon compte'),
                     busy: auth.busy,
                     onPressed: _submit,
                   ),
                   const SizedBox(height: 28),
 
                   // Séparateur « OU S'INSCRIRE AVEC ».
-                  const DividerWithLabel(label: "OU S'INSCRIRE AVEC"),
+                  DividerWithLabel(label: l10n.t("OU S'INSCRIRE AVEC")),
                   const SizedBox(height: 24),
 
                   // Boutons sociaux Google / Apple.
@@ -236,9 +243,9 @@ class _SignUpViewState extends State<SignUpView> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Déjà un compte ? ',
-                          style: TextStyle(
+                        Text(
+                          l10n.t('Déjà un compte ? '),
+                          style: const TextStyle(
                             color: AuthColors.label,
                             fontSize: 14,
                           ),
@@ -246,11 +253,11 @@ class _SignUpViewState extends State<SignUpView> {
                         GestureDetector(
                           onTap: auth.busy ? null : widget.onSwitchToLogin,
                           behavior: HitTestBehavior.opaque,
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
-                              'Se connecter',
-                              style: TextStyle(
+                              l10n.t('Se connecter'),
+                              style: const TextStyle(
                                 color: AuthColors.ink,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,

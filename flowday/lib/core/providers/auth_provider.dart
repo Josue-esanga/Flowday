@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../errors/api_exception.dart';
+import '../l10n/app_localizations.dart';
 import '../network/pkce.dart';
 import '../network/supabase_auth_client.dart';
 
@@ -171,6 +172,23 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
           email = storedEmail;
           _status = AuthStatus.authenticated;
           await _persistSession();
+        } on ApiException catch (e) {
+          if (_isTransientAuthError(e)) {
+            // Réseau indisponible / serveur momentanément en erreur :
+            // on conserve la session locale. L'utilisateur reste connecté
+            // et le prochain rafraîchissement réessaiera.
+            _session = AuthSession(
+              accessToken: access,
+              refreshToken: refresh,
+              expiresAt: expiresAt,
+              email: storedEmail,
+            );
+            email = storedEmail;
+            _status = AuthStatus.authenticated;
+          } else if (_status != AuthStatus.authenticated) {
+            await _clearLocal();
+            _status = AuthStatus.unauthenticated;
+          }
         } catch (_) {
           if (_status != AuthStatus.authenticated) {
             await _clearLocal();
@@ -263,8 +281,10 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   Future<String?> completeEmailConfirmation(String code) async {
     final verifier = _pkceVerifier ?? await _loadPkce();
     if (verifier == null || verifier.isEmpty) {
-      return 'Le lien de confirmation est invalide ou a expiré. '
-          'Inscrivez-vous de nouveau pour recevoir un nouvel e-mail.';
+      return AppLocalizations.instance.t(
+        'Le lien de confirmation est invalide ou a expiré. '
+        'Inscrivez-vous de nouveau pour recevoir un nouvel e-mail.',
+      );
     }
     _pkceVerifier = verifier;
     busy = true;
@@ -290,16 +310,22 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       await _clearPkce();
       await _persistSession();
       await _cleanupRemoteAvatar();
-      notice = 'Votre adresse e-mail est confirmée. Bienvenue !';
+      notice = AppLocalizations.instance.t(
+        'Votre adresse e-mail est confirmée. Bienvenue !',
+      );
       return null;
     } on ApiException catch (e) {
       if (e.statusCode == 0 || e.statusCode >= 500) return e.message;
       // Code expiré, déjà utilisé ou vérificateur non reconnu.
-      return 'Le lien de confirmation est invalide ou a expiré. '
-          'Demandez un nouvel e-mail puis réessayez.';
+      return AppLocalizations.instance.t(
+        'Le lien de confirmation est invalide ou a expiré. Demandez un '
+        'nouvel e-mail puis réessayez.',
+      );
     } catch (_) {
-      return 'Impossible de joindre le serveur. Vérifiez votre connexion '
-          'internet, puis réessayez.';
+      return AppLocalizations.instance.t(
+        'Impossible de joindre le serveur. Vérifiez votre connexion '
+        'internet, puis réessayez.',
+      );
     } finally {
       busy = false;
       notifyListeners();
@@ -330,8 +356,10 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       // Réponse serveur (compte inconnu…) → message générique côté app.
       return e.statusCode == 0 ? e.message : null;
     } catch (_) {
-      return 'Impossible de joindre le serveur. Vérifiez votre connexion '
-          'internet, puis réessayez.';
+      return AppLocalizations.instance.t(
+        'Impossible de joindre le serveur. Vérifiez votre connexion '
+        'internet, puis réessayez.',
+      );
     }
   }
 
@@ -346,7 +374,9 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
     String? newPassword,
   }) async {
     if (_session == null) {
-      return 'Votre session a expiré. Veuillez vous reconnecter.';
+      return AppLocalizations.instance.t(
+        'Votre session a expiré. Veuillez vous reconnecter.',
+      );
     }
     return _runAuth(() async {
       final session = _session!;
@@ -392,8 +422,10 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
     } on ApiException catch (e) {
       return e.message;
     } catch (_) {
-      return 'Impossible de joindre le serveur. Vérifiez votre connexion '
-          'internet, puis réessayez.';
+      return AppLocalizations.instance.t(
+        'Impossible de joindre le serveur. Vérifiez votre connexion '
+        'internet, puis réessayez.',
+      );
     } finally {
       busy = false;
       notifyListeners();
@@ -433,6 +465,19 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       await _persistSession();
       notifyListeners();
       return true;
+    } on ApiException catch (e) {
+      if (_isTransientAuthError(e)) {
+        // Panne réseau / serveur : ne pas déconnecter l'utilisateur.
+        // La session reste en mémoire et sera retentée plus tard.
+        return false;
+      }
+      // Jeton de rafraîchissement refusé : session réellement terminée.
+      _session = null;
+      email = null;
+      _status = AuthStatus.unauthenticated;
+      await _clearLocal();
+      notifyListeners();
+      return false;
     } catch (_) {
       // Session morte : retour à l'écran de connexion.
       _session = null;
@@ -443,6 +488,10 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       return false;
     }
   }
+
+  /// Vrai pour une erreur passagère qui ne doit pas fermer la session.
+  static bool _isTransientAuthError(ApiException error) =>
+      error.isNetwork || error.statusCode == 429 || error.statusCode >= 500;
 
   // ---------------------------------------------------------------------
   // Internes
@@ -575,12 +624,14 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   /// Décode les métadonnées persistées (JSON → map), sûr en cas de
   /// valeur absente ou corrompue.
   static Map<String, dynamic> _decodeMeta(String? raw) {
-    if (raw == null || raw.isEmpty) return const {};
+    if (raw == null || raw.isEmpty) return <String, dynamic>{};
     try {
       final decoded = jsonDecode(raw);
-      return decoded is Map ? Map<String, dynamic>.from(decoded) : const {};
+      return decoded is Map
+          ? Map<String, dynamic>.from(decoded)
+          : <String, dynamic>{};
     } catch (_) {
-      return const {};
+      return <String, dynamic>{};
     }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/auth_provider.dart';
 import 'auth_widgets.dart';
 
@@ -39,16 +40,16 @@ class _LoginViewState extends State<LoginView> {
 
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
-    if (email.isEmpty) return 'L’adresse e-mail est obligatoire.';
+    if (email.isEmpty) return context.tr('L’adresse e-mail est obligatoire.');
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-      return 'Adresse e-mail invalide.';
+      return context.tr('Adresse e-mail invalide.');
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Le mot de passe est obligatoire.';
+      return context.tr('Le mot de passe est obligatoire.');
     }
     return null;
   }
@@ -76,49 +77,54 @@ class _LoginViewState extends State<LoginView> {
 
     final email = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Mot de passe oublié ?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        content: Form(
-          key: formKey,
-          child: FloatingInputField(
-            controller: controller,
-            labelText: 'Adresse email',
-            hintText: 'alexandre@exemple.com',
-            prefixIcon: Icons.mail_outline_rounded,
-            keyboardType: TextInputType.emailAddress,
-            validator: _validateEmail,
+      builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext);
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text(
-              'Annuler',
-              style: TextStyle(color: AppColors.muted, fontSize: 14),
+          title: Text(
+            l10n.t('Mot de passe oublié ?'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: Form(
+            key: formKey,
+            child: FloatingInputField(
+              controller: controller,
+              labelText: l10n.t('Adresse email'),
+              hintText: 'alexandre@exemple.com',
+              prefixIcon: Icons.mail_outline_rounded,
+              keyboardType: TextInputType.emailAddress,
+              validator: _validateEmail,
             ),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AuthColors.ink,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                l10n.t('Annuler'),
+                style: const TextStyle(color: AppColors.muted, fontSize: 14),
               ),
             ),
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                Navigator.pop(dialogContext, controller.text.trim());
-              }
-            },
-            child: const Text('Envoyer le lien'),
-          ),
-        ],
-      ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AuthColors.ink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(dialogContext, controller.text.trim());
+                }
+              },
+              child: Text(l10n.t('Envoyer le lien')),
+            ),
+          ],
+        );
+      },
     );
     // `controller` vit le temps de la route de dialogue (exit animation).
 
@@ -132,8 +138,10 @@ class _LoginViewState extends State<LoginView> {
           behavior: SnackBarBehavior.floating,
           content: Text(
             message ??
-                'Si un compte existe avec cette adresse, un e-mail de '
-                    'réinitialisation vient de vous être envoyé.',
+                context.tr(
+                  'Si un compte existe avec cette adresse, un e-mail de '
+                  'réinitialisation vient de vous être envoyé.',
+                ),
           ),
         ),
       );
@@ -143,10 +151,12 @@ class _LoginViewState extends State<LoginView> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
           content: Text(
-            'Connexion Google / Apple non disponible pour le moment.',
+            context.tr(
+              'Connexion Google / Apple non disponible pour le moment.',
+            ),
           ),
         ),
       );
@@ -155,6 +165,7 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = context.l10n;
 
     return SingleChildScrollView(
       child: Form(
@@ -164,11 +175,12 @@ class _LoginViewState extends State<LoginView> {
             // ----------------------------------------------------------
             // En-tête noir full-bleed (marque cursive + accroche)
             // ----------------------------------------------------------
-            const FlowdayHeader(
-              subtitleBadge: 'Prêt pour une journée productive ?',
-              title: 'Se connecter',
-              description:
-                  'Retrouvez vos listes et atteignez vos objectifs du jour.',
+            FlowdayHeader(
+              subtitleBadge: l10n.t('Prêt pour une journée productive ?'),
+              title: l10n.t('Se connecter'),
+              description: l10n.t(
+                'Retrouvez vos listes et atteignez vos objectifs du jour.',
+              ),
             ),
 
             // ----------------------------------------------------------
@@ -187,7 +199,7 @@ class _LoginViewState extends State<LoginView> {
                   // Champ e-mail.
                   FloatingInputField(
                     controller: _emailController,
-                    labelText: 'Adresse email',
+                    labelText: l10n.t('Adresse email'),
                     hintText: 'alexandre@exemple.com',
                     prefixIcon: Icons.mail_outline_rounded,
                     enabled: !auth.busy,
@@ -201,7 +213,7 @@ class _LoginViewState extends State<LoginView> {
                   // Champ mot de passe (œil de visibilité).
                   FloatingInputField(
                     controller: _passwordController,
-                    labelText: 'Mot de passe',
+                    labelText: l10n.t('Mot de passe'),
                     hintText: '••••••••••••',
                     prefixIcon: Icons.lock_outline_rounded,
                     enabled: !auth.busy,
@@ -232,9 +244,9 @@ class _LoginViewState extends State<LoginView> {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                       ),
-                      child: const Text(
-                        'Mot de passe oublié ?',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.t('Mot de passe oublié ?'),
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: AuthColors.ink,
@@ -246,14 +258,14 @@ class _LoginViewState extends State<LoginView> {
 
                   // Bouton primaire noir (texte + flèche).
                   PrimaryFlowButton(
-                    text: 'Se connecter',
+                    text: l10n.t('Se connecter'),
                     busy: auth.busy,
                     onPressed: _submit,
                   ),
                   const SizedBox(height: 28),
 
                   // Séparateur « OU CONTINUER AVEC ».
-                  const DividerWithLabel(label: 'OU CONTINUER AVEC'),
+                  DividerWithLabel(label: l10n.t('OU CONTINUER AVEC')),
                   const SizedBox(height: 24),
 
                   // Boutons sociaux Google / Apple.
@@ -284,9 +296,9 @@ class _LoginViewState extends State<LoginView> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Pas encore de compte ? ',
-                          style: TextStyle(
+                        Text(
+                          l10n.t('Pas encore de compte ? '),
+                          style: const TextStyle(
                             color: AuthColors.label,
                             fontSize: 14,
                           ),
@@ -294,11 +306,11 @@ class _LoginViewState extends State<LoginView> {
                         GestureDetector(
                           onTap: auth.busy ? null : widget.onSwitchToRegister,
                           behavior: HitTestBehavior.opaque,
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
-                              "S'inscrire",
-                              style: TextStyle(
+                              l10n.t("S'inscrire"),
+                              style: const TextStyle(
                                 color: AuthColors.ink,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,

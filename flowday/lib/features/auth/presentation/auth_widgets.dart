@@ -166,18 +166,26 @@ class FloatingInputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final foreground = theme.colorScheme.onSurface;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AuthColors.border, width: 1.2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? theme.dividerColor : AuthColors.border,
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x06000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: TextFormField(
@@ -189,31 +197,35 @@ class FloatingInputField extends StatelessWidget {
         enabled: enabled,
         autofillHints: autofillHints,
         onFieldSubmitted: onFieldSubmitted,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: AuthColors.ink,
+          color: foreground,
         ),
         decoration: InputDecoration(
           border: InputBorder.none,
           labelText: labelText,
-          labelStyle: const TextStyle(
+          labelStyle: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: AuthColors.label,
+            color: isDark
+                ? foreground.withValues(alpha: 0.65)
+                : AuthColors.label,
           ),
-          floatingLabelStyle: const TextStyle(
+          floatingLabelStyle: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AuthColors.ink,
+            color: foreground,
           ),
           hintText: hintText,
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            color: AuthColors.hint,
+            color: isDark
+                ? foreground.withValues(alpha: 0.45)
+                : AuthColors.hint,
           ),
-          prefixIcon: Icon(prefixIcon, color: AuthColors.ink, size: 20),
+          prefixIcon: Icon(prefixIcon, color: foreground, size: 20),
           suffixIcon: suffixIcon,
           contentPadding: const EdgeInsets.symmetric(vertical: 2),
           errorStyle: const TextStyle(fontSize: 12.5, color: Color(0xFFD93025)),

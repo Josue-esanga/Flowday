@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/errors/api_exception.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/utils/date_utils.dart';
+import '../../../shared/widgets/category_meta.dart';
 
 /// Formulaire de création (F3) / modification (F4) / suppression (F5)
 /// d'une tâche, connecté à l'API via [TasksProvider].
@@ -83,12 +85,12 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   Future<void> _save() async {
     final title = _title.text.trim();
     if (title.isEmpty) {
-      setState(() => _titleError = 'Le titre est obligatoire.');
+      setState(() => _titleError = context.tr('Le titre est obligatoire.'));
       return;
     }
     final category = _category;
     if (category == null) {
-      setState(() => _formError = 'Choisissez une catégorie.');
+      setState(() => _formError = context.tr('Choisissez une catégorie.'));
       return;
     }
 
@@ -131,35 +133,36 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _formError = 'Impossible de contacter le serveur.';
+        _formError = context.tr('Impossible de contacter le serveur.');
       });
     }
   }
 
   Future<void> _delete() async {
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor:
             Theme.of(dialogContext).dialogTheme.backgroundColor ??
             Theme.of(dialogContext).cardColor,
-        title: const Text('Supprimer la tâche ?'),
+        title: Text(l10n.t('Supprimer la tâche ?')),
         content: Text(
-          '« ${widget.task!.title} » sera définitivement supprimée.',
+          l10n.deleteTaskBody(widget.task!.title),
           style: const TextStyle(color: AppColors.muted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Annuler',
-              style: TextStyle(color: AppColors.muted),
+            child: Text(
+              l10n.t('Annuler'),
+              style: const TextStyle(color: AppColors.muted),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(
-              'Supprimer',
+              l10n.t('Supprimer'),
               style: TextStyle(color: AppColors.personal),
             ),
           ),
@@ -175,7 +178,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Suppression impossible.')),
+          SnackBar(content: Text(context.tr('Suppression impossible.'))),
         );
       }
     }
@@ -184,6 +187,12 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final l10n = context.l10n;
+    final fieldColor = theme.brightness == Brightness.dark
+        ? colors.surface
+        : AppColors.field;
     final categories = context.watch<TasksProvider>().categories;
 
     // Catégorie par défaut : « work » si présente.
@@ -214,9 +223,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 Expanded(
                   child: Center(
                     child: Text(
-                      _isEdit ? 'Edit task' : 'New task',
-                      style: const TextStyle(
-                        color: AppColors.text,
+                      _isEdit ? l10n.t('Edit task') : l10n.t('New task'),
+                      style: TextStyle(
+                        color: colors.onSurface,
                         fontSize: 19,
                         fontWeight: FontWeight.bold,
                       ),
@@ -248,16 +257,16 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                       setState(() => _titleError = null);
                     }
                   },
-                  style: const TextStyle(color: AppColors.text, fontSize: 14),
+                  style: TextStyle(color: colors.onSurface, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Ex. Meeting with Shakib',
-                    hintStyle: const TextStyle(
-                      color: AppColors.placeholderText,
+                    hintText: l10n.t('Ex. Meeting with Shakib'),
+                    hintStyle: TextStyle(
+                      color: colors.onSurface.withValues(alpha: 0.45),
                       fontSize: 14,
                     ),
                     errorText: _titleError,
                     filled: true,
-                    fillColor: AppColors.field,
+                    fillColor: fieldColor,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,
@@ -285,15 +294,15 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 TextField(
                   controller: _description,
                   maxLines: 3,
-                  style: const TextStyle(color: AppColors.text, fontSize: 14),
+                  style: TextStyle(color: colors.onSurface, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Short description',
-                    hintStyle: const TextStyle(
-                      color: AppColors.placeholderText,
+                    hintText: l10n.t('Short description'),
+                    hintStyle: TextStyle(
+                      color: colors.onSurface.withValues(alpha: 0.45),
                       fontSize: 14,
                     ),
                     filled: true,
-                    fillColor: AppColors.field,
+                    fillColor: fieldColor,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,
@@ -346,9 +355,12 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 const _FieldLabel('Category'),
                 const SizedBox(height: 10),
                 if (categories.isEmpty)
-                  const Text(
-                    'Chargement des catégories…',
-                    style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  Text(
+                    l10n.t('Chargement des catégories…'),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                    ),
                   )
                 else
                   Wrap(
@@ -382,7 +394,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  category.name,
+                                  categoryDisplayName(context, category),
                                   style: TextStyle(
                                     color: _category?.id == category.id
                                         ? Colors.white
@@ -435,7 +447,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                             ),
                           )
                         : Text(
-                            _isEdit ? 'Enregistrer' : 'Créer',
+                            _isEdit ? l10n.t('Enregistrer') : l10n.t('Créer'),
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -458,9 +470,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    child: const Text(
-                      'Annuler',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.t('Annuler'),
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -483,8 +495,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: const Text(
-                        'Supprimer la tâche',
+                      child: Text(
+                        l10n.t('Supprimer la tâche'),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -510,12 +522,13 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppColors.text,
+        style: TextStyle(
+          color: colors.onSurface,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -533,13 +546,17 @@ class _PickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: AppColors.field,
+          color: theme.brightness == Brightness.dark
+              ? colors.surface
+              : AppColors.field,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -549,17 +566,17 @@ class _PickerField extends StatelessWidget {
               child: Text(
                 value,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.text,
+                style: TextStyle(
+                  color: colors.onSurface,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_down,
               size: 20,
-              color: AppColors.muted,
+              color: colors.onSurface.withValues(alpha: 0.65),
             ),
           ],
         ),

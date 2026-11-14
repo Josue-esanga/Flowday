@@ -80,9 +80,9 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.ensureVisible(find.text('See all').first);
+    await tester.ensureVisible(find.text('Tout voir').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('See all').first);
+    await tester.tap(find.text('Tout voir').first);
     await tester.pumpAndSettle();
 
     // Première tâche (mise en avant) : initialement terminée.
@@ -109,9 +109,9 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.ensureVisible(find.text('See all').first);
+    await tester.ensureVisible(find.text('Tout voir').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('See all').first);
+    await tester.tap(find.text('Tout voir').first);
     await tester.pumpAndSettle();
 
     // Tap sur la carte → feuille d'actions → modification.
@@ -145,8 +145,8 @@ void main() {
     // Après défilement, les sections sont bien masquées (pas de contenu).
     await tester.drag(find.byIcon(Icons.search_off), const Offset(0, -400));
     await tester.pumpAndSettle();
-    expect(find.text('Categories'), findsNothing);
-    expect(find.text("Today's task"), findsNothing);
+    expect(find.text('Catégories'), findsNothing);
+    expect(find.text('Tâche du jour'), findsNothing);
 
     // Une recherche réelle filtre les tâches affichées (titre/description).
     await tester.enterText(search, 'yoga');
@@ -164,7 +164,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
-    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Rechercher'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Meeting with Shakib'),
       300,
@@ -180,13 +180,13 @@ void main() {
 
     // Toutes les cartes visibles ont leur flèche (carte entière cliquable).
     expect(find.byIcon(Icons.arrow_forward), findsAtLeastNWidgets(3));
-    await tester.tap(find.text('Personal'));
+    await tester.tap(find.text('Personnel'));
     await tester.pumpAndSettle();
 
     // En-tête de la page + compteur (fixtures personal : 2 tâches).
     final screen = find.byType(CategoryTasksScreen);
     expect(
-      find.descendant(of: screen, matching: find.text('Personal')),
+      find.descendant(of: screen, matching: find.text('Personnel')),
       findsOneWidget,
     );
     expect(
@@ -195,7 +195,7 @@ void main() {
     );
 
     // Tâches de la catégorie groupées par date, autres catégories absentes.
-    expect(find.text('June 27, 2026'), findsOneWidget);
+    expect(find.text('27 juin 2026'), findsOneWidget);
     expect(find.text('Clean the garage'), findsOneWidget);
     expect(find.text('Go laundering'), findsOneWidget);
     expect(find.text('Meeting with Shakib'), findsNothing);

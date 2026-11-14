@@ -1,43 +1,16 @@
 import 'package:flutter/material.dart';
 
-/// Formats de dates/heures de Flowday (sans dépendance `intl`).
+import '../../core/l10n/app_localizations.dart';
+
+/// Formats de dates/heures de Flowday, adaptés à la langue courante.
 class FlowDates {
   FlowDates._();
 
-  static const List<String> months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+  static List<String> get months => AppLocalizations.instance.months;
 
-  static const List<String> weekdays = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
+  static List<String> get weekdays => AppLocalizations.instance.weekdays;
 
-  static const List<String> weekLabels = [
-    'Mon',
-    'Tues',
-    'Wed',
-    'Thur',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
+  static List<String> get weekLabels => AppLocalizations.instance.weekLabels;
 
   /// « 2026-06-28 » — format attendu par l'API.
   static String apiDate(DateTime d) =>
@@ -45,12 +18,16 @@ class FlowDates {
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
-  /// « June 28, 2026 » — en-tête de la timeline.
+  /// « 28 juin 2026 » / « June 28, 2026 » — en-tête de la timeline.
   static String displayDate(DateTime d) =>
-      '${months[d.month - 1]} ${d.day}, ${d.year}';
+      AppLocalizations.instance.displayDate(d);
 
-  /// « Friday » — grand titre de la timeline.
+  /// « Vendredi » / « Friday » — grand titre de la timeline.
   static String weekdayName(DateTime d) => weekdays[d.weekday - 1];
+
+  /// « Vendredi 28 juin » / « Friday, June 28 » — résumé du calendrier.
+  static String summaryDate(DateTime d) =>
+      AppLocalizations.instance.summaryDate(d);
 
   /// Lundi de la semaine contenant [day].
   static DateTime mondayOf(DateTime day) =>
@@ -66,6 +43,6 @@ class FlowDates {
       '${t.hour.toString().padLeft(2, '0')}:'
       '${t.minute.toString().padLeft(2, '0')}';
 
-  /// Jour de la semaine abrégé (« Mon ») pour [date].
+  /// Jour de la semaine abrégé (« Lun » / « Mon ») pour [date].
   static String shortWeekday(DateTime date) => weekLabels[date.weekday - 1];
 }

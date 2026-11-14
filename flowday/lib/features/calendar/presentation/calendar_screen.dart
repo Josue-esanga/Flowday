@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/tasks_provider.dart';
 import '../../../shared/utils/date_utils.dart';
 import '../../../shared/widgets/skeleton.dart';
@@ -29,16 +30,6 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  static const List<String> _weekLabels = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-
   late int _year;
   late int _month;
 
@@ -75,11 +66,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     final state = context.watch<TasksProvider>();
     final selected = state.selectedDate;
     final topPadding = MediaQuery.of(context).padding.top;
     final screenWidth = MediaQuery.of(context).size.width;
     final isCompact = screenWidth < 360;
+
+    // Les repères du mois sont chargés une fois, puis mis en cache par le
+    // provider (et maintenus lors des créations / modifications / suppressions).
+    if (!state.isCalendarMonthLoaded(_year, _month)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<TasksProvider>().ensureCalendarMonth(_year, _month);
+        }
+      });
+    }
 
     // Grille du mois : 1er jour (lundi = 0) + nombre de jours.
     final firstDay = DateTime(_year, _month, 1);
@@ -109,7 +111,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               // Titre
               // ----------------------------------------------------------
               Text(
-                'Calendrier',
+                l10n.t('Calendrier'),
                 style: TextStyle(
                   color: colors.onSurface,
                   fontSize: isCompact ? 26 : 32,
@@ -153,7 +155,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               // ----------------------------------------------------------
               Row(
                 children: [
-                  for (final label in _weekLabels)
+                  for (final label in FlowDates.weekLabels)
                     Expanded(
                       child: SizedBox(
                         height: 24,
@@ -197,6 +199,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           selected.year == _year &&
                           selected.month == _month &&
                           selected.day == day,
+                      hasTasks: state.hasTasksOn(DateTime(_year, _month, day)),
                       onTap: () => context.read<TasksProvider>().selectDate(
                         DateTime(_year, _month, day),
                       ),
@@ -234,6 +237,7 @@ class _DayCell extends StatelessWidget {
     required this.size,
     required this.fontSize,
     required this.selected,
+    required this.hasTasks,
     required this.onTap,
   });
 
@@ -241,30 +245,67 @@ class _DayCell extends StatelessWidget {
   final double size;
   final double fontSize;
   final bool selected;
+  final bool hasTasks;
   final VoidCallback onTap;
+
+  /// Hauteur réservée sous le cercle pour le repère : la ligne est présente
+  /// sur **toutes** les cellules (avec ou sans tâche) pour que les lignes
+  /// de la grille restent parfaitement alignées.
+  static const double _markerGap = 1.5;
+  static const double _markerSize = 4.5;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    // Le repère est posé **sous** la date, jamais par-dessus : `primary`
+    // contraste toujours avec le fond de l'écran (sombre en clair, clair
+    // en sombre), y compris sur le jour sélectionné.
     return Center(
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? colors.primary : Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            '$day',
-            style: TextStyle(
-              color: selected ? colors.onPrimary : colors.onSurface,
-              fontSize: fontSize,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            ),
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: hasTasks ? context.l10n.t('Tâches prévues') : null,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: size,
+                height: size,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? colors.primary : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$day',
+                  style: TextStyle(
+                    color: selected ? colors.onPrimary : colors.onSurface,
+                    fontSize: fontSize,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: _markerGap),
+              SizedBox(
+                height: _markerSize,
+                child: hasTasks
+                    ? Center(
+                        child: Container(
+                          key: ValueKey('calendar-task-marker-$day'),
+                          width: _markerSize,
+                          height: _markerSize,
+                          decoration: BoxDecoration(
+                            color: colors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+            ],
           ),
         ),
       ),
@@ -294,22 +335,17 @@ class _SelectedDaySummary extends StatelessWidget {
   final VoidCallback onOpenTimeline;
   final VoidCallback onRetry;
 
-  String get _weekday => FlowDates.weekdayName(selected);
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     String subtitle;
     if (loading) {
-      subtitle = 'Chargement…';
+      subtitle = l10n.t('Chargement…');
     } else if (error != null) {
       subtitle = error!;
-    } else if (count == 0) {
-      subtitle = 'Aucune tâche prévue';
-    } else if (count == 1) {
-      subtitle = '1 tâche prévue';
     } else {
-      subtitle = '$count tâches prévues';
+      subtitle = l10n.plannedTasks(count);
     }
 
     return Container(
@@ -325,7 +361,7 @@ class _SelectedDaySummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$_weekday, ${FlowDates.months[selected.month - 1]} ${selected.day}',
+            FlowDates.summaryDate(selected),
             style: TextStyle(
               color: theme.colorScheme.onSurface,
               fontSize: isCompact ? 15 : 16,
@@ -358,7 +394,9 @@ class _SelectedDaySummary extends StatelessWidget {
                 ),
               ),
               child: Text(
-                error == null ? 'Voir les tâches du jour' : 'Réessayer',
+                error == null
+                    ? l10n.t('Voir les tâches du jour')
+                    : l10n.t('Réessayer'),
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
