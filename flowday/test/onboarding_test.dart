@@ -26,9 +26,7 @@ void main() {
     expect(stored.isCompleted, isTrue);
   });
 
-  testWidgets('Onboarding compact jusqu’au choix des notifications', (
-    tester,
-  ) async {
+  testWidgets('Onboarding compact jusqu’à « Commencer »', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -56,20 +54,18 @@ void main() {
     expect(find.text('Bienvenue sur Flowday'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    // Trois pages de contenu puis la proposition de notifications.
-    for (var index = 0; index < 3; index++) {
+    // Deux pages intermédiaires…
+    for (var index = 0; index < 2; index++) {
       await tester.tap(find.byKey(const Key('onboarding-next')));
       await tester.pumpAndSettle();
     }
-    expect(find.text('Ne manquez plus rien'), findsOneWidget);
-    expect(
-      find.byKey(const Key('onboarding-enable-notifications')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key('onboarding-later')), findsOneWidget);
+    expect(find.text('Gardez le cap'), findsOneWidget);
+    expect(find.text('Commencer'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byKey(const Key('onboarding-later')));
+    // … puis la dernière action termine l'onboarding. Aucune demande de
+    // notification ici : elle est proposée nativement après la connexion.
+    await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
     expect(onboarding.isCompleted, isTrue);
 

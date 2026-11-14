@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,7 @@ import '../errors/api_exception.dart';
 import '../l10n/app_localizations.dart';
 import '../network/pkce.dart';
 import '../network/supabase_auth_client.dart';
+import '../network/supabase_storage_client.dart';
 
 /// États de la session applicative.
 enum AuthStatus {
@@ -39,37 +41,50 @@ enum AuthStatus {
 /// `flowday://login-callback?code=…` par [completeEmailConfirmation]
 /// échange le code contre une session (voir `AuthDeepLinks`).
 class AuthProvider extends ChangeNotifier implements TokenSource {
-  AuthProvider({SupabaseAuthClient? client, this.persist = true})
-    : _client = client ?? SupabaseAuthClient(),
-      _status = AuthStatus.unknown;
+  AuthProvider({
+    SupabaseAuthClient? client,
+    SupabaseStorageClient? storage,
+    this.persist = true,
+  }) : _client = client ?? SupabaseAuthClient(),
+       _storage = storage ?? SupabaseStorageClient(),
+       _status = AuthStatus.unknown;
 
   /// Session déjà établie, sans persistance — utilisé par les tests.
   AuthProvider.authenticated({
     this.email = 'demo@flowday.app',
     Map<String, dynamic>? metadata,
     SupabaseAuthClient? client,
+    SupabaseStorageClient? storage,
+    String id = 'test-user',
   }) : _client = client ?? SupabaseAuthClient(),
+       _storage = storage ?? SupabaseStorageClient(),
        persist = false,
        _status = AuthStatus.authenticated {
     this.metadata = metadata ?? const {};
-    final avatar = this.metadata['avatar'];
-    if (avatar is String && avatar.isNotEmpty) _localAvatar = avatar;
+    _acceptMetadata(this.metadata);
     _session = AuthSession(
       accessToken: 'test-access-token',
       refreshToken: 'test-refresh-token',
       expiresAt: DateTime.now().add(const Duration(hours: 1)),
       email: email ?? 'demo@flowday.app',
       metadata: this.metadata,
+      id: id,
     );
   }
 
   /// Non connecté, sans persistance — écran de connexion (tests).
-  AuthProvider.signedOut({SupabaseAuthClient? client})
-    : _client = client ?? SupabaseAuthClient(),
-      persist = false,
-      _status = AuthStatus.unauthenticated;
+  AuthProvider.signedOut({
+    SupabaseAuthClient? client,
+    SupabaseStorageClient? storage,
+  }) : _client = client ?? SupabaseAuthClient(),
+       _storage = storage ?? SupabaseStorageClient(),
+       persist = false,
+       _status = AuthStatus.unauthenticated;
 
   final SupabaseAuthClient _client;
+
+  /// Dépôt des photos de profil (Supabase Storage).
+  final SupabaseStorageClient _storage;
 
   /// Persistance des jetons (locale) ; désactivée en environnement de test.
   final bool persist;
@@ -80,11 +95,15 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   /// Adresse e-mail du compte connecté.
   String? email;
 
-  /// Métadonnées légères du compte (nom, etc.). La photo reste locale afin
-  /// de ne pas l'embarquer dans chaque JWT Supabase.
+  /// Métadonnées légères du compte (nom, `avatar` = URL publique…).
   Map<String, dynamic> metadata = const {};
 
-  String? _localAvatar;
+  /// Photo de profil courante : URL Supabase Storage (cas normal) ou
+  /// ancienne data-URL locale (comptes migrés, convertie à la connexion).
+  String? _avatar;
+
+  /// Une photo inline (data-URL) traîne encore dans les métadonnées
+  /// distantes et doit en être retirée (jeton Supabase trop lourd).
   bool _needsAvatarCleanup = false;
 
   /// Nom complet du compte (vide s'il n'a pas encore été renseigné).
@@ -94,8 +113,15 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
 
   String get location => metadata['location']?.toString().trim() ?? '';
 
-  /// Photo de profil en data-URL (`data:image/…;base64,…`), ou `null`.
-  String? get avatar => _localAvatar;
+  /// Photo de profil : URL publique Supabase Storage (ou data-URL legacy),
+  /// `null` si le compte n'en a pas.
+  String? get avatar => _avatar;
+
+  /// Identifiant Supabase du compte (dossier Storage des photos).
+  String? get userId {
+    final id = _session?.id;
+    return id == null || id.isEmpty ? null : id;
+  }
 
   /// Une opération (connexion/inscription) est en cours.
   bool busy = false;
@@ -139,15 +165,11 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
         return;
       }
       final restoredMetadata = _decodeMeta(storedMeta);
-      final storedAvatar =
-          prefs.getString(_avatarKey(storedEmail)) ??
-          prefs.getString('fd.profile.avatar');
-      final oldAvatar = restoredMetadata.remove('avatar');
-      _localAvatar =
-          storedAvatar ??
-          (oldAvatar is String && oldAvatar.isNotEmpty ? oldAvatar : null);
-      _needsAvatarCleanup = oldAvatar is String && oldAvatar.isNotEmpty;
-      metadata = restoredMetadata;
+      final storedId = prefs.getString('fd.session.user_id') ?? '';
+      // La photo vient des métadonnées (URL Storage) ; les anciennes
+      // photos locales en data-URL restent affichées jusqu'à leur envoi.
+      _acceptMetadata(restoredMetadata);
+      await _loadLocalAvatar(storedEmail);
       final expiresAt = expiresAtMs == null
           ? DateTime.now()
           : DateTime.fromMillisecondsSinceEpoch(expiresAtMs);
@@ -161,6 +183,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
           refreshToken: refresh,
           expiresAt: expiresAt,
           email: storedEmail,
+          id: storedId,
         );
         email = storedEmail;
         _status = AuthStatus.authenticated;
@@ -182,6 +205,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
               refreshToken: refresh,
               expiresAt: expiresAt,
               email: storedEmail,
+              id: storedId,
             );
             email = storedEmail;
             _status = AuthStatus.authenticated;
@@ -197,7 +221,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
         }
       }
       await _persistSession();
-      await _cleanupRemoteAvatar();
+      unawaited(_syncRemoteAvatar());
     } catch (_) {
       // Plugin de stockage indisponible (tests) → connexion requise.
       if (_status != AuthStatus.authenticated) {
@@ -215,6 +239,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   Future<String?> signIn({required String email, required String password}) =>
       _runAuth(() async {
         final session = await _client.signIn(email: email, password: password);
+        _resetProfileState();
         _session = _withEmail(session, email);
         this.email = email;
         await _loadLocalAvatar(email);
@@ -229,7 +254,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
         }
         _status = AuthStatus.authenticated;
         await _persistSession();
-        await _cleanupRemoteAvatar();
+        unawaited(_syncRemoteAvatar());
       });
 
   /// Inscription ; renvoie `null` en cas de succès (session ouverte ou
@@ -256,6 +281,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
     );
     if (result.session != null) {
       // Session immédiate (confirmation désactivée) : aucun lien attendu.
+      _resetProfileState();
       _session = _withEmail(result.session!, email);
       this.email = email;
       await _loadLocalAvatar(email);
@@ -264,7 +290,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       _pkceVerifier = null;
       await _clearPkce();
       await _persistSession();
-      await _cleanupRemoteAvatar();
+      unawaited(_syncRemoteAvatar());
     } else {
       confirmationSent = true;
       this.email = email;
@@ -294,6 +320,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
         authCode: code,
         codeVerifier: verifier,
       );
+      _resetProfileState();
       _session = _withEmail(session, email);
       email = _session!.email;
       await _loadLocalAvatar(email);
@@ -309,7 +336,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       _pkceVerifier = null;
       await _clearPkce();
       await _persistSession();
-      await _cleanupRemoteAvatar();
+      unawaited(_syncRemoteAvatar());
       notice = AppLocalizations.instance.t(
         'Votre adresse e-mail est confirmée. Bienvenue !',
       );
@@ -369,6 +396,11 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   /// Met à jour les informations du compte : métadonnées (nom complet,
   /// photo de profil) et/ou mot de passe ; renvoie `null` en cas de
   /// succès, sinon un message utilisateur (aucun détail technique).
+  ///
+  /// La photo choisie (data-URL) est d'abord **envoyée sur Supabase
+  /// Storage** ; seule son URL publique rejoint les métadonnées du compte
+  /// — la photo est donc retrouvée à chaque connexion, sur n'importe quel
+  /// appareil.
   Future<String?> updateProfile({
     Map<String, dynamic>? metadata,
     String? newPassword,
@@ -382,29 +414,38 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       final session = _session!;
       final changes = <String, dynamic>{...?metadata};
       if (changes.containsKey('avatar')) {
-        final image = changes.remove('avatar');
-        _localAvatar = image is String && image.isNotEmpty ? image : null;
-        _needsAvatarCleanup = true;
+        final image = changes['avatar'];
+        if (image is String && image.startsWith('data:')) {
+          _avatar = await _uploadAvatar(session, image);
+          changes['avatar'] = _avatar;
+          _needsAvatarCleanup = false;
+        } else if (image is String && image.trim().isNotEmpty) {
+          // URL déjà distante (inchangée).
+          _avatar = image;
+          changes['avatar'] = image;
+          _needsAvatarCleanup = false;
+        } else {
+          final previous = _avatar;
+          _avatar = null;
+          changes['avatar'] = null; // photo retirée
+          if (previous != null && !previous.startsWith('data:')) {
+            final path = _storage.pathFromUrl(previous);
+            if (path != null) {
+              await _storage.deleteAvatar(
+                token: session.accessToken,
+                path: path,
+              );
+            }
+          }
+        }
       }
       final merged = <String, dynamic>{...this.metadata, ...changes};
-      if (_needsAvatarCleanup) merged['avatar'] = null;
       final updated = await _client.updateUser(
         token: session.accessToken,
         data: merged.isEmpty ? null : merged,
         password: newPassword,
       );
       _acceptMetadata(updated.isNotEmpty ? updated : merged);
-      if (_needsAvatarCleanup) {
-        try {
-          final renewed = await _client.refresh(session.refreshToken);
-          _session = _withEmail(renewed, session.email);
-          if (renewed.metadata.isNotEmpty) _acceptMetadata(renewed.metadata);
-          _needsAvatarCleanup = false;
-        } catch (_) {
-          // Le profil est corrigé ; le prochain renouvellement régénérera
-          // le jeton léger même si celui-ci ne peut pas l'être maintenant.
-        }
-      }
       await _persistSession();
     });
   }
@@ -438,14 +479,16 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   Future<void> signOut() async {
     final token = _session?.accessToken;
     final local = _session;
+    final accountEmail = _session?.email ?? email;
     _session = null;
     email = null;
+    _resetProfileState();
     _status = AuthStatus.unauthenticated;
     confirmationSent = false;
     notice = null;
     _pkceVerifier = null;
     notifyListeners();
-    await _clearLocal();
+    await _clearLocal(accountEmail);
     await _clearPkce();
     if (token != null && local != null) {
       await _client.signOut(token); // best-effort
@@ -501,23 +544,50 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
     refreshToken: session.refreshToken,
     expiresAt: session.expiresAt,
     email: session.email.isNotEmpty ? session.email : (fallback ?? email ?? ''),
+    id: session.id.isNotEmpty ? session.id : (_session?.id ?? ''),
   );
 
+  /// Efface l'identité en mémoire (photo, nom…) : aucun reste du compte
+  /// précédent ne doit apparaître au prochain connexion.
+  void _resetProfileState() {
+    metadata = const {};
+    _avatar = null;
+    _needsAvatarCleanup = false;
+  }
+
+  /// Applique les métadonnées reçues du serveur : la photo est une **URL
+  /// publique** (Storage) ; une ancienne data-URL inline est conservée
+  /// pour l'affichage mais retirée des métadonnées (JWT trop lourd).
   void _acceptMetadata(Map<String, dynamic> value) {
     final clean = Map<String, dynamic>.from(value);
-    final remoteAvatar = clean.remove('avatar');
-    if (remoteAvatar is String && remoteAvatar.isNotEmpty) {
-      _localAvatar ??= remoteAvatar;
-      _needsAvatarCleanup = true;
+    final remoteAvatar = clean['avatar'];
+    if (remoteAvatar is String && remoteAvatar.trim().isNotEmpty) {
+      _avatar = remoteAvatar;
+      if (remoteAvatar.startsWith('data:')) {
+        clean.remove('avatar');
+        _needsAvatarCleanup = true;
+      } else {
+        _needsAvatarCleanup = false;
+      }
+    } else if (clean.containsKey('avatar')) {
+      clean.remove('avatar');
+      _avatar = null;
+      _needsAvatarCleanup = false;
     }
     metadata = clean;
   }
 
+  /// Ancienne photo locale (data-URL, versions précédentes) : lue une
+  /// dernière fois pour ne pas la perdre, puis envoyée sur Storage par
+  /// [_syncRemoteAvatar].
   Future<void> _loadLocalAvatar(String? accountEmail) async {
-    if (_localAvatar != null || !persist || accountEmail == null) return;
+    if (_avatar != null || !persist || accountEmail == null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      _localAvatar = prefs.getString(_avatarKey(accountEmail));
+      final legacy =
+          prefs.getString(_avatarKey(accountEmail)) ??
+          prefs.getString('fd.profile.avatar');
+      if (legacy != null && legacy.isNotEmpty) _avatar = legacy;
     } catch (_) {
       // L'image est facultative ; le reste du profil reste disponible.
     }
@@ -526,27 +596,99 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   String _avatarKey(String accountEmail) =>
       'fd.profile.avatar.${Uri.encodeComponent(accountEmail.toLowerCase())}';
 
-  /// Migre une ancienne photo data-URL hors de `user_metadata`. Supabase
+  /// Envoie vers Supabase Storage une photo encore locale (data-URL) et
+  /// nettoie les métadonnées distantes. Sans effet si la photo est déjà
+  /// une URL publique.
+  Future<void> _syncRemoteAvatar() async {
+    final session = _session;
+    if (session == null) return;
+    final avatar = _avatar;
+
+    if (avatar != null && avatar.startsWith('data:')) {
+      try {
+        final url = await _uploadAvatar(session, avatar);
+        final merged = <String, dynamic>{...metadata, 'avatar': url};
+        final updated = await _client.updateUser(
+          token: session.accessToken,
+          data: merged,
+        );
+        _acceptMetadata(updated.isNotEmpty ? updated : merged);
+        _needsAvatarCleanup = false;
+        await _refreshToken(session);
+        await _persistSession();
+        return;
+      } catch (_) {
+        // Hors ligne : la photo reste affichée ; nouvelle tentative à la
+        // prochaine ouverture. Les métadonnées sont nettoyées ci-dessous.
+      }
+    }
+
+    if (_needsAvatarCleanup) await _stripInlineAvatar(session);
+  }
+
+  /// Retire une ancienne photo inline des métadonnées distantes. Supabase
   /// inclut ces métadonnées dans le JWT : une image de 40 Ko produisait un
   /// jeton de 55 Ko que PostgREST rejetait avec HTTP 400.
-  Future<void> _cleanupRemoteAvatar() async {
-    final session = _session;
-    if (!_needsAvatarCleanup || session == null) return;
+  Future<void> _stripInlineAvatar(AuthSession session) async {
     try {
-      final updated = await _client.updateUser(
+      await _client.updateUser(
         token: session.accessToken,
         data: const {'avatar': null},
       );
-      _acceptMetadata(updated);
-      final renewed = await _client.refresh(session.refreshToken);
-      _session = _withEmail(renewed, session.email);
-      if (renewed.metadata.isNotEmpty) _acceptMetadata(renewed.metadata);
       _needsAvatarCleanup = false;
+      metadata = Map<String, dynamic>.from(metadata)..remove('avatar');
+      await _refreshToken(session);
     } catch (_) {
       // La connexion reste utilisable ; une prochaine ouverture ou
       // modification du profil retentera la migration.
     }
     await _persistSession();
+  }
+
+  /// Régénère le jeton pour qu'il ne contienne plus l'ancienne image.
+  Future<void> _refreshToken(AuthSession session) async {
+    try {
+      final renewed = await _client.refresh(session.refreshToken);
+      _session = _withEmail(
+        renewed,
+        session.email.isEmpty ? email : session.email,
+      );
+      if (renewed.metadata.isNotEmpty) _acceptMetadata(renewed.metadata);
+    } catch (_) {
+      // Le jeton sera régénéré au prochain renouvellement automatique.
+    }
+  }
+
+  /// Envoie une image `data:…;base64,…` sur Supabase Storage et renvoie
+  /// son URL publique.
+  Future<String> _uploadAvatar(AuthSession session, String dataUrl) async {
+    final match = RegExp(
+      r'^data:([^;,]*);base64,(.*)$',
+      dotAll: true,
+    ).firstMatch(dataUrl);
+    if (match == null) {
+      throw ApiException(
+        statusCode: 400,
+        message: AppLocalizations.instance.t(
+          "Cette photo n'est pas lisible. Choisissez-en une autre.",
+        ),
+      );
+    }
+    final mime = (match.group(1) ?? '').trim();
+    final bytes = base64Decode(match.group(2)!);
+    return _storage.uploadAvatar(
+      token: session.accessToken,
+      userId: _storageUserId(session),
+      bytes: bytes,
+      contentType: mime.isEmpty ? 'image/jpeg' : mime,
+    );
+  }
+
+  /// Dossier Storage de l'utilisateur : identifiant Supabase, ou e-mail
+  /// encodé pour les sessions restaurées d'avant cette version.
+  String _storageUserId(AuthSession session) {
+    if (session.id.isNotEmpty) return session.id;
+    return Uri.encodeComponent(session.email.toLowerCase());
   }
 
   Future<void> _persistSession() async {
@@ -556,11 +698,15 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
       await prefs.setString('fd.session.access', _session!.accessToken);
       await prefs.setString('fd.session.refresh', _session!.refreshToken);
       await prefs.setString('fd.session.email', _session!.email);
+      await prefs.setString('fd.session.user_id', _session!.id);
       await prefs.setString('fd.session.meta', jsonEncode(metadata));
-      if (_localAvatar == null) {
+      // Seules les anciennes photos inline restent en cache local ; une
+      // photo envoyée sur Storage n'est plus dupliquée sur l'appareil.
+      final avatar = _avatar;
+      if (avatar == null || !avatar.startsWith('data:')) {
         await prefs.remove(_avatarKey(_session!.email));
       } else {
-        await prefs.setString(_avatarKey(_session!.email), _localAvatar!);
+        await prefs.setString(_avatarKey(_session!.email), avatar);
         await prefs.remove('fd.profile.avatar');
       }
       await prefs.setInt(
@@ -572,15 +718,18 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
     }
   }
 
-  Future<void> _clearLocal() async {
+  Future<void> _clearLocal([String? accountEmail]) async {
     if (!persist) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('fd.session.access');
       await prefs.remove('fd.session.refresh');
       await prefs.remove('fd.session.email');
+      await prefs.remove('fd.session.user_id');
       await prefs.remove('fd.session.meta');
-      _localAvatar = null;
+      final target = accountEmail ?? _session?.email ?? email;
+      if (target != null) await prefs.remove(_avatarKey(target));
+      _avatar = null;
       await prefs.remove('fd.session.expires');
     } catch (_) {
       // Rien à nettoyer.

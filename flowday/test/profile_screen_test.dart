@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowday/app/app.dart';
 import 'package:flowday/core/network/supabase_auth_client.dart';
+import 'package:flowday/core/network/supabase_storage_client.dart';
 import 'package:flowday/core/providers/auth_provider.dart';
 import 'package:flowday/features/account/presentation/profile_edit_sheet.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +14,11 @@ import 'fakes/fake_task_repository.dart';
 /// PNG 8×8 minimal : simule la photo choisie dans la galerie.
 const String _tinyAvatar =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGP4UiaPFTEMLQkAmUJiQV5sAqkAAAAASUVORK5CYII=';
+
+/// URL publique renvoyée par le faux Storage.
+const String _storedAvatar =
+    'https://demo.supabase.co/storage/v1/object/public/avatars/'
+    'test-user/avatar.png?v=1';
 
 /// Client d'auth factice : enregistre la dernière mise à jour envoyée
 /// (`PUT /user` simulé — aucun réseau en test).
@@ -27,6 +35,26 @@ class FakeAuthClient extends SupabaseAuthClient {
     lastData = data;
     lastPassword = password;
     return data ?? const {};
+  }
+}
+
+/// Storage factice : enregistre l'envoi de la photo (aucun réseau).
+class FakeStorageClient extends SupabaseStorageClient {
+  String? uploadedUserId;
+  String? uploadedContentType;
+  int? uploadedBytes;
+
+  @override
+  Future<String> uploadAvatar({
+    required String token,
+    required String userId,
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    uploadedUserId = userId;
+    uploadedContentType = contentType;
+    uploadedBytes = bytes.length;
+    return _storedAvatar;
   }
 }
 
@@ -56,13 +84,13 @@ void main() {
     await tester.pumpAndSettle();
 
     // Identité réelle du compte (aucun nom codé en dur).
-    expect(find.text('Josué Esanga'), findsOneWidget);
-    expect(find.text('josue@flowday.app'), findsOneWidget);
+    expect(find.text('Josué Esanga'), findsWidgets);
+    expect(find.text('josue@flowday.app'), findsWidgets);
 
     // Déconnexion : confirmation puis retour à l'écran de connexion.
-    await tester.ensureVisible(find.text('Déconnexion'));
+    await tester.scrollUntilVisible(find.text('Se déconnecter'), 250);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Déconnexion'));
+    await tester.tap(find.text('Se déconnecter'));
     await tester.pumpAndSettle();
     expect(find.text('Se déconnecter ?'), findsOneWidget);
 
@@ -92,35 +120,44 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.person));
     await tester.pumpAndSettle();
-    expect(find.text('Ancien Nom'), findsOneWidget);
+    expect(find.text('Ancien Nom'), findsWidgets);
 
-    // Ouverture de la feuille d'édition.
-    await tester.ensureVisible(find.text('Modifier le profil'));
+    // Ouverture de la feuille d'édition (bouton « Modifier » du profil).
+    await tester.ensureVisible(find.widgetWithText(TextButton, 'Modifier'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Modifier le profil'));
+    await tester.tap(find.widgetWithText(TextButton, 'Modifier'));
     await tester.pumpAndSettle();
-    expect(find.byType(TextField), findsNWidgets(3)); // nom + 2 mots de passe
+    expect(find.byType(TextField), findsNWidgets(3)); // prénom + nom + e-mail
 
     // Saisie du nouveau nom + enregistrement.
-    await tester.enterText(find.byType(TextField).first, 'Josué Nouveau');
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Enregistrer'));
+    await tester.enterText(find.byType(TextField).at(0), 'Josué');
+    await tester.enterText(find.byType(TextField).at(1), 'Nouveau');
+    final save = find.widgetWithText(
+      ElevatedButton,
+      'Enregistrer les modifications',
+    );
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
     await tester.pumpAndSettle();
 
     // Feuille fermée, profil rafraîchi, patch envoyé au client.
     expect(find.byType(TextField), findsNothing);
-    expect(find.text('Josué Nouveau'), findsOneWidget);
+    expect(find.text('Josué Nouveau'), findsWidgets);
     expect(find.text('Profil mis à jour.'), findsOneWidget);
     expect(client.lastData?['full_name'], 'Josué Nouveau');
     await _settleSnackBars(tester);
   });
 
-  testWidgets('Feuille : la photo choisie rejoint la mise à jour', (
+  testWidgets('Feuille : la photo choisie part sur Supabase Storage', (
     tester,
   ) async {
     final client = FakeAuthClient();
+    final storage = FakeStorageClient();
     final auth = AuthProvider.authenticated(
       metadata: const {'full_name': 'Photo Test'},
       client: client,
+      storage: storage,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthProvider>.value(
@@ -146,39 +183,44 @@ void main() {
     expect(find.byType(TextField), findsNWidgets(3));
 
     // Choix de la photo (sélecteur injecté) → « Retirer » apparaît.
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Choisir une photo'));
+    await tester.tap(find.widgetWithText(TextButton, 'Ajouter une photo'));
     await tester.pumpAndSettle();
-    expect(find.text('Retirer'), findsOneWidget);
+    expect(find.text('Retirer la photo'), findsOneWidget);
 
-    // Enregistrement → la photo (data-URL) part avec le nom.
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Enregistrer'));
+    // Enregistrement → l'image est téléversée puis remplacée par son URL.
+    final save = find.widgetWithText(
+      ElevatedButton,
+      'Enregistrer les modifications',
+    );
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
     await tester.pumpAndSettle();
 
     expect(find.byType(TextField), findsNothing); // feuille fermée
+    expect(storage.uploadedUserId, 'test-user');
+    expect(storage.uploadedContentType, 'image/png');
+    expect(storage.uploadedBytes, greaterThan(0));
     expect(auth.fullName, 'Photo Test');
-    expect(auth.avatar, _tinyAvatar);
-    expect(client.lastData?['avatar'], _tinyAvatar);
+    expect(auth.avatar, _storedAvatar);
+    expect(client.lastData?['avatar'], _storedAvatar);
     expect(client.lastData?['full_name'], 'Photo Test');
   });
 
-  testWidgets('Paramètres : déconnexion confirmée', (tester) async {
-    await tester.pumpWidget(app(AuthProvider.authenticated()));
+  testWidgets('Paramètres : le compte connecté est affiché', (tester) async {
+    await tester.pumpWidget(
+      app(AuthProvider.authenticated(email: 'josue@flowday.app')),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.settings));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Se déconnecter'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Se déconnecter'));
-    await tester.pumpAndSettle();
-    expect(find.text('Se déconnecter ?'), findsOneWidget);
+    // Section « Compte » : l'adresse du compte connecté est visible.
+    expect(find.text('Connecté en tant que'), findsOneWidget);
+    expect(find.text('josue@flowday.app'), findsWidgets);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Se déconnecter'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Prêt pour une journée productive ?'), findsOneWidget);
-    expect(find.text('Vous êtes déconnecté.'), findsOneWidget);
-    await _settleSnackBars(tester);
+    // La déconnexion se fait depuis le Profil (couverte par le 1er test).
+    expect(find.text('Se déconnecter'), findsNothing);
   });
 }

@@ -18,6 +18,7 @@ class AuthSession {
     required this.expiresAt,
     required this.email,
     this.metadata = const {},
+    this.id = '',
   });
 
   final String accessToken;
@@ -25,7 +26,12 @@ class AuthSession {
   final DateTime expiresAt;
   final String email;
 
-  /// Métadonnées du compte (`full_name`, `avatar` en base64…).
+  /// Identifiant Supabase du compte (utilisé pour le dossier Storage
+  /// `avatars/<id>/`). Vide pour les sessions de test / restaurées avant
+  /// cette version.
+  final String id;
+
+  /// Métadonnées du compte (`full_name`, `avatar` = URL publique…).
   final Map<String, dynamic> metadata;
 
   factory AuthSession.fromJson(
@@ -47,6 +53,9 @@ class AuthSession {
       expiresAt: DateTime.now().add(Duration(seconds: seconds)),
       email: email,
       metadata: meta,
+      id: user is Map && user['id'] is String
+          ? user['id'] as String
+          : (json['id'] is String ? json['id'] as String : ''),
     );
   }
 }

@@ -13,8 +13,9 @@ import '../../../shared/widgets/avatar.dart';
 /// plateforme native) ; défaut = galerie compressée.
 typedef ProfileImagePicker = Future<String?> Function();
 
-/// Choix d'une photo dans la galerie, réduite à 512 px et conservée
-/// localement pour éviter d'alourdir le jeton Supabase.
+/// Choix d'une photo dans la galerie, réduite à 512 px. L'image revient en
+/// data-URL et sera **envoyée sur Supabase Storage** à l'enregistrement
+/// (seule son URL publique est conservée dans le profil).
 Future<String?> pickProfileImage() async {
   final picked = await ImagePicker().pickImage(
     source: ImageSource.gallery,

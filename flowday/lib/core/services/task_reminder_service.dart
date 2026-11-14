@@ -15,6 +15,9 @@ class TaskReminderService {
   static final instance = TaskReminderService._();
   static const _enabledKey = 'flowday.task_reminders.enabled';
   static const _defaultMinutesKey = 'flowday.task_reminders.default_minutes';
+
+  /// Mémorise que la demande native a déjà été faite (une seule fois).
+  static const _askedAfterLoginKey = 'flowday.task_reminders.permission_asked';
   static const _timezoneChannel = MethodChannel('flowday/device_timezone');
 
   final FlutterLocalNotificationsPlugin _notifications =
@@ -76,7 +79,12 @@ class TaskReminderService {
 
   /// Demande les permissions au moment où l'utilisateur active l'option.
   /// Renvoie `false` si le système a refusé les notifications.
-  Future<bool> setEnabled(bool value) async {
+  ///
+  /// [requestExactAlarms] ouvre en plus l'écran système « alarmes et
+  /// rappels » (Android 12+) ; il est désactivé pour la demande
+  /// automatique après connexion, qui doit rester une simple boîte de
+  /// dialogue native.
+  Future<bool> setEnabled(bool value, {bool requestExactAlarms = true}) async {
     await initialize();
     if (value) {
       if (defaultTargetPlatform == TargetPlatform.android) {
@@ -86,8 +94,10 @@ class TaskReminderService {
             >();
         final granted = await android?.requestNotificationsPermission();
         if (granted == false) return false;
-        _canScheduleExactly =
-            await android?.requestExactAlarmsPermission() ?? false;
+        if (requestExactAlarms) {
+          _canScheduleExactly =
+              await android?.requestExactAlarmsPermission() ?? false;
+        }
       } else if (defaultTargetPlatform == TargetPlatform.iOS) {
         final granted = await _notifications
             .resolvePlatformSpecificImplementation<
@@ -103,6 +113,32 @@ class TaskReminderService {
     await preferences.setBool(_enabledKey, value);
     if (!value) await _notifications.cancelAll();
     return true;
+  }
+
+  /// Demande l'autorisation des notifications **une seule fois**, après la
+  /// première connexion à un compte : le système affiche alors sa propre
+  /// boîte de dialogue native (Android 13+ / iOS).
+  ///
+  /// Si l'utilisateur a déjà activé les rappels, ou si la demande a déjà été
+  /// faite (accordée ou refusée), rien ne se passe — le réglage reste
+  /// modifiable depuis les paramètres.
+  Future<bool> requestPermissionAfterLogin() async {
+    try {
+      await initialize();
+      if (_enabled) return true;
+
+      final preferences = await SharedPreferences.getInstance();
+      if (preferences.getBool(_askedAfterLoginKey) ?? false) return false;
+      await preferences.setBool(_askedAfterLoginKey, true);
+
+      // Boîte de dialogue native de notifications uniquement ; l'écran
+      // « alarmes et rappels » reste demandé depuis les paramètres.
+      return await setEnabled(true, requestExactAlarms: false);
+    } catch (_) {
+      // Plateforme sans notifications (tests, bureau) : on n'échoue pas la
+      // connexion pour autant.
+      return false;
+    }
   }
 
   /// Remplace le planning par les tâches à venir (la liste est limitée en

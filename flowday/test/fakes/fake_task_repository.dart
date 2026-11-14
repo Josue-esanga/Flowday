@@ -69,6 +69,12 @@ class FakeTaskRepository implements TaskRepository {
           completed: _store[t.id]?.completed ?? t.completed,
         ),
     ];
+    // Tâches créées pendant le test : un vrai back-end les renverrait à
+    // la prochaine lecture (rafraîchissement, retour sur l'accueil…).
+    for (final created in createdTasks) {
+      final current = _store[created.id] ?? created;
+      if (current.date == day) tasks.add(current);
+    }
     for (final t in tasks) {
       _store[t.id] = t;
     }

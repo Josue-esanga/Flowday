@@ -5,16 +5,15 @@ import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/providers/onboarding_provider.dart';
-import '../../../core/services/task_reminder_service.dart';
 import '../../../shared/widgets/flowday_logo.dart';
+import '../../../shared/widgets/wave_painter.dart';
 
-/// Accent violet de l'onboarding (maquette) : bouton circulaire et
-/// point de progression actif.
-const _accent = Color(0xFF6C5CE7);
-
-/// Premier lancement de Flowday : présentation de l'application, puis
-/// proposition d'activer les rappels. L'achèvement est mémorisé par
-/// [OnboardingProvider] ; l'écran n'est donc affiché qu'une seule fois.
+/// Premier lancement de Flowday : présentation de l'application en trois
+/// pages illustrées. L'achèvement est mémorisé par [OnboardingProvider] ;
+/// l'écran n'est donc affiché qu'une seule fois.
+///
+/// L'autorisation des notifications n'est **pas** demandée ici : elle est
+/// proposée nativement par le système après la connexion à un compte.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -23,15 +22,11 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  static const int _notificationPage = 3;
+  static const int _pageCount = 3;
 
   final PageController _pages = PageController();
   int _page = 0;
   bool _finishing = false;
-
-  /// Le spinner n'apparaît que pendant la demande de permission (le choix
-  /// « Plus tard » referme l'écran sans faux indicateur d'attente).
-  bool _requestingNotifications = false;
 
   @override
   void dispose() {
@@ -39,19 +34,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  bool get _isNotificationPage => _page == _notificationPage;
-
-  void _goToNotifications() {
-    HapticFeedback.selectionClick();
-    _pages.animateToPage(
-      _notificationPage,
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutCubic,
-    );
-  }
+  bool get _isLastPage => _page == _pageCount - 1;
 
   void _next() {
-    if (_isNotificationPage) return;
+    if (_isLastPage) return;
     HapticFeedback.selectionClick();
     _pages.nextPage(
       duration: const Duration(milliseconds: 360),
@@ -59,42 +45,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Future<void> _finish({required bool enableNotifications}) async {
+  Future<void> _finish() async {
     if (_finishing) return;
-    setState(() {
-      _finishing = true;
-      _requestingNotifications = enableNotifications;
-    });
+    setState(() => _finishing = true);
     HapticFeedback.lightImpact();
-
-    var notificationsEnabled = false;
-    if (enableNotifications) {
-      try {
-        notificationsEnabled = await TaskReminderService.instance.setEnabled(
-          true,
-        );
-      } catch (_) {
-        notificationsEnabled = false;
-      }
-    }
-
-    if (!mounted) return;
-    if (enableNotifications && !notificationsEnabled) {
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            content: Text(
-              context.tr(
-                'Notifications désactivées. Vous pourrez les activer dans les '
-                'paramètres.',
-              ),
-            ),
-          ),
-        );
-    }
-
     await context.read<OnboardingProvider>().complete();
   }
 
@@ -128,14 +82,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         illustration: const _FocusIllustration(),
       ),
-      _OnboardingPageData(
-        title: l10n.t('Ne manquez plus rien'),
-        description: l10n.t(
-          'Autorisez les notifications pour recevoir un rappel au bon '
-          'moment. Vous pourrez changer d’avis dans les paramètres.',
-        ),
-        illustration: const _NotificationIllustration(),
-      ),
     ];
 
     final actionBackground = isDark
@@ -149,38 +95,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: Column(
           children: [
             // ----------------------------------------------------------
-            // Marque + passage direct aux notifications.
+            // Marque + passage direct à la fin.
             // ----------------------------------------------------------
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 14, 0),
+              padding: const EdgeInsets.fromLTRB(22, 10, 14, 0),
               child: Row(
                 children: [
-                  // Retour (inerte sur la première page, comme la maquette).
-                  IconButton(
-                    onPressed: _page == 0
-                        ? null
-                        : () {
-                            HapticFeedback.selectionClick();
-                            _pages.previousPage(
-                              duration: const Duration(milliseconds: 360),
-                              curve: Curves.easeOutCubic,
-                            );
-                          },
-                    icon: Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 17,
-                      color: _page == 0
-                          ? muted.withValues(alpha: 0.4)
-                          : foreground,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
-                    ),
-                  ),
-                  const FlowdayLogo(size: 30),
-                  const SizedBox(width: 9),
+                  const FlowdayLogo(size: 34),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Flowday',
@@ -190,15 +112,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         fontFamily: 'DancingScript',
                         fontVariations: const [FontVariation('wght', 700)],
                         fontWeight: FontWeight.w700,
-                        fontSize: 23,
+                        fontSize: 25,
                         color: isDark ? foreground : AppColors.dark,
                         letterSpacing: 0.3,
                       ),
                     ),
                   ),
-                  if (!_isNotificationPage)
+                  const SizedBox(width: 8),
+                  if (!_isLastPage)
                     TextButton(
-                      onPressed: _goToNotifications,
+                      onPressed: _finishing ? null : _finish,
                       style: TextButton.styleFrom(
                         minimumSize: const Size(0, 40),
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -236,174 +159,74 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.fromLTRB(24, 10, 24, 22),
               child: Column(
                 children: [
-                  // Points de progression à gauche, action circulaire à
-                  // droite (maquette) ; la dernière page garde les deux
-                  // boutons d'action pleine largeur.
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _ProgressBar(
-                        count: pages.length,
-                        page: _page,
-                        active: _accent,
-                        inactive: foreground.withValues(alpha: 0.15),
-                      ),
-                      const Spacer(),
-                      if (!_isNotificationPage)
-                        _NextCircleButton(onPressed: _next),
-                    ],
-                  ),
-                  if (_isNotificationPage) ...[
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: FilledButton(
-                        key: const Key('onboarding-enable-notifications'),
-                        onPressed: _finishing
-                            ? null
-                            : () => _finish(enableNotifications: true),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: actionBackground,
-                          foregroundColor: actionForeground,
-                          disabledBackgroundColor: actionBackground.withValues(
-                            alpha: 0.6,
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                      for (var index = 0; index < pages.length; index++)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOut,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: index == _page ? 24 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: index == _page
+                                ? foreground
+                                : foreground.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: _requestingNotifications
-                            ? SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: actionForeground,
-                                ),
-                              )
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.notifications_active_outlined,
-                                    size: 21,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Flexible(
-                                    child: Text(
-                                      l10n.t('Activer les notifications'),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextButton(
-                      key: const Key('onboarding-later'),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: FilledButton(
+                      key: const Key('onboarding-next'),
                       onPressed: _finishing
                           ? null
-                          : () => _finish(enableNotifications: false),
-                      child: Text(
-                        l10n.t('Plus tard'),
-                        style: TextStyle(color: muted),
+                          : (_isLastPage ? _finish : _next),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: actionBackground,
+                        foregroundColor: actionForeground,
+                        disabledBackgroundColor: actionBackground.withValues(
+                          alpha: 0.6,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              l10n.t(_isLastPage ? 'Commencer' : 'Suivant'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(
+                            _isLastPage
+                                ? Icons.check_rounded
+                                : Icons.arrow_forward_rounded,
+                            size: 20,
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Points de progression : le point courant s'allonge en pastille violette,
-/// les autres restent des cercles gris clair (voir la maquette).
-class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({
-    required this.count,
-    required this.page,
-    required this.active,
-    required this.inactive,
-  });
-
-  final int count;
-  final int page;
-  final Color active;
-  final Color inactive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var index = 0; index < count; index++)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-            margin: EdgeInsets.only(right: index == count - 1 ? 0 : 5),
-            width: index == page ? 22 : 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: index == page ? active : inactive,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Bouton rond dégradé de la maquette : flèche blanche sur un violet
-/// dégradé, avec une ombre portée teintée.
-class _NextCircleButton extends StatelessWidget {
-  const _NextCircleButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: context.l10n.t('Suivant'),
-      child: GestureDetector(
-        key: const Key('onboarding-next'),
-        onTap: onPressed,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF8B7CF8), Color(0xFF6455E8)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _accent.withValues(alpha: 0.35),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.arrow_forward_rounded,
-            color: Colors.white,
-            size: 25,
-          ),
         ),
       ),
     );
@@ -436,50 +259,49 @@ class _OnboardingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 18, 26, 4),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            data.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 30,
-              height: 1.12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            data.description,
-            style: TextStyle(color: muted, fontSize: 14.5, height: 1.5),
-          ),
-          const SizedBox(height: 22),
-          // L'illustration occupe tout l'espace restant (borné), comme le
-          // bloc illustré de la maquette : pas de grand blanc inutile.
           Expanded(
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: 460,
-                  maxHeight: 440,
+                  maxWidth: 430,
+                  maxHeight: 360,
                 ),
-                child: data.illustration,
+                child: AspectRatio(aspectRatio: 1.14, child: data.illustration),
               ),
             ),
           ),
+          const SizedBox(height: 26),
+          Text(
+            data.title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 28,
+              height: 1.15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.7,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Text(
+              data.description,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: muted, fontSize: 14.5, height: 1.5),
+            ),
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 }
 
-/// Cadre commun aux illustrations : dégradé lavande (mode clair) ou violet
-/// profond (mode sombre) rehaussé de deux pastilles douces — les cartes
-/// blanches ressortent, comme sur la maquette.
+/// Cadre sombre commun aux illustrations (mêmes vagues que l'en-tête).
 class _IllustrationFrame extends StatelessWidget {
   const _IllustrationFrame({required this.child});
 
@@ -487,55 +309,23 @@ class _IllustrationFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final gradient = isDark
-        ? const [Color(0xFF2B2742), Color(0xFF1E1B2C)]
-        : const [Color(0xFFF8F6FF), Color(0xFFEDE8FE)];
-    final blob = isDark ? const Color(0xFF4C4376) : const Color(0xFFDCD2FC);
-
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
+        color: AppColors.dark,
+        borderRadius: BorderRadius.circular(36),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
-            blurRadius: 26,
-            offset: const Offset(0, 14),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
       child: Stack(
-        fit: StackFit.expand,
         children: [
-          Align(
-            alignment: const Alignment(-1.3, -1.15),
-            child: Container(
-              width: 230,
-              height: 230,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: blob.withValues(alpha: 0.7),
-              ),
-            ),
-          ),
-          Align(
-            alignment: const Alignment(1.45, 1.2),
-            child: Container(
-              width: 190,
-              height: 190,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: blob.withValues(alpha: 0.45),
-              ),
-            ),
-          ),
-          child,
+          const Positioned.fill(child: CustomPaint(painter: WavePainter())),
+          Positioned.fill(child: child),
         ],
       ),
     );
@@ -589,17 +379,11 @@ class _MiniPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -613,7 +397,7 @@ class _MiniPill extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: AppColors.text,
+              color: Colors.white,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -652,7 +436,7 @@ class _CalendarIllustration extends StatelessWidget {
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.14),
+                    color: Colors.black.withValues(alpha: 0.22),
                     blurRadius: 22,
                     offset: const Offset(0, 12),
                   ),
@@ -853,7 +637,7 @@ class _MiniTaskCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: 0.18),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -913,133 +697,6 @@ class _MiniTaskCard extends StatelessWidget {
                 : null,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _NotificationIllustration extends StatelessWidget {
-  const _NotificationIllustration();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return _IllustrationFrame(
-      child: Center(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Pastille blanche à la cloche.
-              Container(
-                width: 96,
-                height: 96,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.notifications_active_rounded,
-                  color: _accent,
-                  size: 42,
-                ),
-              ),
-              const SizedBox(height: 18),
-              // Carte « rappel » : badge, libellés et interrupteur actif.
-              Container(
-                width: 300,
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.health.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: const Icon(
-                        Icons.alarm_rounded,
-                        color: AppColors.dark,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.t('Rappel de tâche'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.text,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            l10n.t('Meeting with Shakib · 09:00'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Interrupteur actif (violet de la maquette).
-                    Container(
-                      width: 46,
-                      height: 27,
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: _accent,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          width: 21,
-                          height: 21,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

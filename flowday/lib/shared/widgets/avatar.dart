@@ -2,14 +2,22 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-/// Décode une photo de profil stockée en `data:image/…;base64,…`.
-/// Renvoie `null` si l'URL est absente ou illisible (→ initiales).
-ImageProvider? decodeAvatarImage(String? dataUrl) {
-  if (dataUrl == null || dataUrl.isEmpty) return null;
+/// Source d'affichage d'une photo de profil :
+/// - URL **Supabase Storage** (`https://…`) — cas normal depuis que les
+///   photos sont stockées en ligne ;
+/// - ancienne photo locale `data:image/…;base64,…` (comptes migrés).
+///
+/// Renvoie `null` si la valeur est absente ou illisible (→ initiales).
+ImageProvider? decodeAvatarImage(String? source) {
+  if (source == null || source.isEmpty) return null;
+  if (source.startsWith('http://') || source.startsWith('https://')) {
+    return NetworkImage(source);
+  }
+  if (!source.startsWith('data:')) return null;
   try {
-    final comma = dataUrl.indexOf(',');
-    final base64Part = comma >= 0 ? dataUrl.substring(comma + 1) : dataUrl;
-    return MemoryImage(base64Decode(base64Part));
+    final comma = source.indexOf(',');
+    if (comma < 0) return null;
+    return MemoryImage(base64Decode(source.substring(comma + 1)));
   } catch (_) {
     return null;
   }
@@ -31,7 +39,8 @@ class Avatar extends StatelessWidget {
   final Color color;
   final double size;
 
-  /// Photo de profil (`data:image/…;base64,…`) — `null` → initiales.
+  /// Photo de profil (URL Supabase Storage ou ancienne data-URL) —
+  /// `null` → initiales.
   final String? image;
 
   @override

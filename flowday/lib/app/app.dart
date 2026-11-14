@@ -9,6 +9,7 @@ import '../core/providers/locale_provider.dart';
 import '../core/providers/onboarding_provider.dart';
 import '../core/providers/theme_provider.dart';
 import '../core/providers/tasks_provider.dart';
+import '../core/services/task_reminder_service.dart';
 import '../features/auth/presentation/auth_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../shared/data/task_repository.dart';
@@ -150,11 +151,15 @@ class _AuthGateState extends State<_AuthGate> {
       final previous = _previous;
       _previous = auth.status;
 
-      // Connexion (initiale ou après reconnexion) → charger les données.
+      // Connexion (initiale ou après reconnexion) → charger les données et
+      // proposer **une seule fois** l'autorisation des notifications avec la
+      // boîte de dialogue native du téléphone (Android 13+ / iOS).
       if (auth.status == AuthStatus.authenticated &&
           previous != AuthStatus.authenticated) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) context.read<TasksProvider>().loadInitial();
+          if (!mounted) return;
+          context.read<TasksProvider>().loadInitial();
+          TaskReminderService.instance.requestPermissionAfterLogin();
         });
       }
 

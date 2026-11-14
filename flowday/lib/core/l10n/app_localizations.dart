@@ -336,6 +336,7 @@ class AppLocalizations {
         'change your mind in Settings.',
     'Passer': 'Skip',
     'Suivant': 'Next',
+    'Commencer': 'Get started',
     'Activer les notifications': 'Enable notifications',
     'Plus tard': 'Later',
     'Aujourd’hui': 'Today',
