@@ -61,21 +61,19 @@ class FlowdayLogoPainter extends CustomPainter {
     final background = framed
         ? RRect.fromRectAndRadius(
             const Rect.fromLTWH(5, 5, 490, 490),
-            const Radius.circular(100),
+            const Radius.circular(65),
           )
         : RRect.fromRectAndRadius(
             const Rect.fromLTWH(0, 0, 500, 500),
             Radius.zero,
           );
 
-    const bounds = Rect.fromLTWH(5, 5, 490, 490);
-
     if (framed) {
       canvas.drawRRect(
-        background.shift(const Offset(0, 10)),
+        background.shift(const Offset(0, 8)),
         Paint()
-          ..color = Colors.black.withValues(alpha: 0.4)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
+          ..color = Colors.black.withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15),
       );
     }
 
@@ -85,57 +83,30 @@ class FlowdayLogoPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF27272E), Color(0xFF191920), Color(0xFF0B0B10)],
-        ).createShader(bounds),
+          colors: [Color(0xFF292930), Color(0xFF17171D), Color(0xFF08080D)],
+        ).createShader(const Rect.fromLTWH(5, 5, 490, 490)),
     );
 
     canvas.save();
     canvas.clipRRect(background);
 
-    // Halo lumineux en haut à gauche et lueur violette en bas à droite.
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.85, -0.9),
-          radius: 1.1,
-          colors: [
-            Colors.white.withValues(alpha: 0.07),
-            Colors.white.withValues(alpha: 0),
-          ],
-        ).createShader(bounds),
-    );
-
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(0.9, 0.95),
-          radius: 0.95,
-          colors: [
-            const Color(0xFF7A6BFF).withValues(alpha: 0.12),
-            const Color(0xFF7A6BFF).withValues(alpha: 0),
-          ],
-        ).createShader(bounds),
-    );
-
     // ==========================================
     // 2. VAGUES DECORATIVES
     // ==========================================
     final wavePaint = Paint()
-      ..color = const Color(0xFFB7B7C8).withValues(alpha: 0.10)
+      ..color = const Color(0xFFA5A5B9).withValues(alpha: 0.18)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
+      ..strokeWidth = 1.3;
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 15; i++) {
       final path = Path();
-      final y = 30.0 + i * 17;
+      final y = 45.0 + i * 16;
 
-      path.moveTo(-10, y + 40);
+      path.moveTo(0, y + 35);
 
-      path.cubicTo(95, y - 60, 165, y - 48, 240, y + 34);
+      path.cubicTo(100, y - 55, 160, y - 45, 235, y + 30);
 
-      path.cubicTo(315, y + 116, 385, y + 80, 510, y + 12);
+      path.cubicTo(310, y + 110, 380, y + 75, 500, y + 15);
 
       canvas.drawPath(path, wavePaint);
     }
@@ -152,200 +123,173 @@ class FlowdayLogoPainter extends CustomPainter {
     }
 
     // ==========================================
-    // 3. RUBAN PRINCIPAL DU F
-    //    (hampe + bras supérieur + pied balayé)
+    // 3. FORME PRINCIPALE DU F
     // ==========================================
     final fPath = Path()
-      ..moveTo(120, 176)
-      ..cubicTo(120, 126, 146, 101, 192, 101) // coin supérieur gauche
-      ..lineTo(380, 101) // bord supérieur
-      ..cubicTo(390, 101, 395, 106, 395, 116) // coin supérieur droit
-      ..cubicTo(395, 138, 377, 154, 356, 160) // bout droit qui retombe
-      ..lineTo(232, 162) // bord inférieur du bras
-      ..cubicTo(211, 162, 195, 169, 195, 184) // courbe intérieure
-      ..lineTo(195, 330) // côté droit de la hampe
-      ..lineTo(286, 368) // pointe du pied (derrière le calendrier)
-      ..cubicTo(268, 388, 236, 397, 200, 401)
-      ..cubicTo(168, 405, 140, 412, 124, 414)
-      ..cubicTo(121, 413, 120, 402, 120, 392)
+      // Partie supérieure
+      ..moveTo(138, 151)
+      ..cubicTo(138, 105, 168, 76, 215, 76)
+      ..lineTo(375, 76)
+      ..cubicTo(375, 106, 350, 133, 319, 133)
+      ..lineTo(243, 133)
+      // Courbe intérieure
+      ..cubicTo(216, 133, 203, 151, 203, 178)
+      ..lineTo(203, 283)
+      // Partie inférieure du F
+      ..cubicTo(203, 332, 181, 363, 138, 381)
+      ..lineTo(138, 151)
       ..close();
 
-    // Ombre portée du ruban
+    // Ombre du F
     canvas.drawPath(
-      fPath.shift(const Offset(3, 9)),
+      fPath.shift(const Offset(5, 7)),
       Paint()
         ..color = Colors.black.withValues(alpha: 0.5)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
 
-    // Dégradé du ruban
+    // Dégradé principal
     canvas.drawPath(
       fPath,
       Paint()
         ..shader = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xFFF4F3FC), Color(0xFFDFDDEF)],
-        ).createShader(const Rect.fromLTWH(118, 94, 290, 330)),
-    );
-
-    // Pli du ruban : ombre douce + face légèrement lavande
-    canvas.save();
-    canvas.clipPath(fPath);
-    canvas.drawPath(
-      Path()
-        ..moveTo(256, 99)
-        ..lineTo(292, 99)
-        ..lineTo(256, 172)
-        ..lineTo(198, 172)
-        ..close(),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.33)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 11),
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(272, 90)
-        ..lineTo(400, 90)
-        ..lineTo(400, 172)
-        ..lineTo(222, 172)
-        ..close(),
-      Paint()..color = const Color(0xFFB9BAD8).withValues(alpha: 0.30),
-    );
-    // Ombre du bras sur la hampe
-    canvas.drawPath(
-      Path()
-        ..moveTo(196, 200)
-        ..lineTo(212, 200)
-        ..lineTo(158, 360)
-        ..lineTo(120, 360)
-        ..close(),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.42)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
-    );
-    canvas.restore();
-
-    // ==========================================
-    // 4. COCHE BLANCHE
-    // ==========================================
-    final check = Path()
-      ..moveTo(241, 213)
-      ..lineTo(266, 253)
-      ..lineTo(313, 188);
-
-    canvas.drawPath(
-      check,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.55)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7)
-        ..strokeWidth = 22
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke,
-    );
-
-    canvas.drawPath(
-      check,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xFFEDEBFA)],
-        ).createShader(const Rect.fromLTWH(232, 186, 90, 70))
-        ..strokeWidth = 21
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke,
+          colors: [Colors.white, Color(0xFFF2F0FF), Color(0xFFDAD8ED)],
+        ).createShader(const Rect.fromLTWH(130, 70, 260, 320)),
     );
 
     // ==========================================
-    // 5. BRAS MÉDIAN FLOTTANT (ruban / drapeau)
+    // 4. BRANCHE HORIZONTALE DU F
     // ==========================================
     final middleArm = Path()
-      ..moveTo(262, 276) // pointe gauche
-      ..lineTo(364, 251) // bord supérieur
-      ..cubicTo(374, 249, 377, 261, 373, 274) // coin droit
-      ..lineTo(369, 289) // bord droit
-      ..cubicTo(365, 303, 349, 312, 329, 316) // coin inférieur droit
-      ..cubicTo(306, 319, 284, 301, 262, 276) // retour à la pointe
+      ..moveTo(180, 245)
+      ..lineTo(354, 245)
+      ..cubicTo(351, 270, 341, 290, 318, 300)
+      ..lineTo(242, 300)
+      ..cubicTo(218, 300, 203, 314, 188, 337)
+      ..lineTo(180, 245)
       ..close();
-
-    canvas.drawPath(
-      middleArm.shift(const Offset(-5, 11)),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
-    );
 
     canvas.drawPath(
       middleArm,
       Paint()
         ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
+          begin: Alignment.topCenter,
           end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xFFF6F5FE), Color(0xFFC2C2D8)],
-        ).createShader(const Rect.fromLTWH(259, 247, 130, 72)),
+          colors: [Colors.white, Color(0xFFE2E0F6), Color(0xFFB5AED8)],
+        ).createShader(const Rect.fromLTWH(180, 245, 175, 100)),
     );
 
     // ==========================================
-    // 6. CALENDRIER : OMBRE
+    // 5. INTÉRIEUR SOMBRE DU LOGO
+    // ==========================================
+    final inner = Path()
+      ..moveTo(203, 178)
+      ..cubicTo(203, 151, 221, 137, 247, 137)
+      ..lineTo(333, 137)
+      ..cubicTo(346, 165, 332, 202, 303, 222)
+      ..lineTo(260, 247)
+      ..lineTo(203, 247)
+      ..close();
+
+    canvas.drawPath(inner, Paint()..color = const Color(0xFF15151B));
+
+    // ==========================================
+    // 6. COCHE BLANCHE
+    // ==========================================
+    final check = Path()
+      ..moveTo(242, 218)
+      ..lineTo(267, 242)
+      ..lineTo(311, 198);
+
+    canvas.drawPath(
+      check,
+      Paint()
+        ..color = const Color(0xFF08080D)
+        ..strokeWidth = 25
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke,
+    );
+
+    canvas.drawPath(
+      check,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Colors.white, Color(0xFFE4E1F8)],
+        ).createShader(const Rect.fromLTWH(240, 190, 75, 55))
+        ..strokeWidth = 17
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke,
+    );
+
+    // ==========================================
+    // 7. CALENDRIER : OMBRE
     // ==========================================
     final calendar = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(169, 304, 118, 88),
-      const Radius.circular(36),
+      const Rect.fromLTWH(180, 278, 104, 101),
+      const Radius.circular(23),
     );
 
     canvas.drawRRect(
-      calendar.shift(const Offset(-3, 8)),
+      calendar.shift(const Offset(3, 6)),
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.32)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+        ..color = Colors.black.withValues(alpha: 0.45)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
     );
 
     // ==========================================
-    // 7. CORPS DU CALENDRIER
+    // 8. CORPS DU CALENDRIER
     // ==========================================
     canvas.drawRRect(
       calendar,
       Paint()
         ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xFFF6F6FD), Color(0xFFE7E6F4)],
-        ).createShader(const Rect.fromLTWH(169, 304, 118, 88)),
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, Color(0xFFE5E4F1)],
+        ).createShader(const Rect.fromLTWH(180, 278, 104, 101)),
     );
 
+    // En-tête noir
+    final header = RRect.fromRectAndCorners(
+      const Rect.fromLTWH(180, 278, 104, 28),
+      topLeft: const Radius.circular(17),
+      topRight: const Radius.circular(17),
+    );
+
+    canvas.drawRRect(header, Paint()..color = const Color(0xFF19191F));
+
     // ==========================================
-    // 8. ANNEAUX DU CALENDRIER
+    // 9. ANNEAUX DU CALENDRIER
     // ==========================================
     final ringPaint = Paint()
-      ..color = const Color(0xFFFBFAFF)
-      ..strokeWidth = 10
+      ..color = Colors.white
+      ..strokeWidth = 9
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    canvas.drawLine(const Offset(203, 272), const Offset(203, 310), ringPaint);
+    canvas.drawLine(const Offset(210, 265), const Offset(210, 286), ringPaint);
 
-    canvas.drawLine(const Offset(251, 272), const Offset(251, 310), ringPaint);
+    canvas.drawLine(const Offset(251, 265), const Offset(251, 286), ringPaint);
 
     // ==========================================
-    // 9. PETITS CARRÉS DU CALENDRIER
+    // 10. PETITS CARRÉS DU CALENDRIER
     // ==========================================
     final dotPaint = Paint()
       ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFFAEADC6), Color(0xFF9B9AB6)],
-      ).createShader(const Rect.fromLTWH(190, 322, 76, 50));
+        colors: [Color(0xFFA7A6C0), Color(0xFF87869F)],
+      ).createShader(const Rect.fromLTWH(195, 312, 75, 45));
 
     const dots = [
-      Offset(203, 331),
-      Offset(229, 331),
-      Offset(255, 331),
-      Offset(203, 357),
-      Offset(229, 357),
-      Offset(255, 357),
+      Offset(210, 326),
+      Offset(237, 326),
+      Offset(264, 326),
+      Offset(210, 354),
+      Offset(237, 354),
+      Offset(264, 354),
     ];
 
     for (final point in dots) {
