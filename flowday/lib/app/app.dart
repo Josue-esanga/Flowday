@@ -13,7 +13,6 @@ import '../core/services/task_reminder_service.dart';
 import '../features/auth/presentation/auth_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../shared/data/task_repository.dart';
-import '../shared/widgets/flowday_logo.dart';
 import 'home_shell.dart';
 import 'theme/app_theme.dart';
 
@@ -196,7 +195,7 @@ class _Splash extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FlowdayLogo(size: 136),
+            _SplashLogo(),
             SizedBox(height: 22),
             Text(
               'Flowday',
@@ -220,6 +219,40 @@ class _Splash extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Logo du splash : **exactement l'icône de l'application**
+/// (`assets/images/app_icon.png`, master 1024 px), présentée comme une
+/// carte arrondie avec une ombre douce — même rendu que l'icône sur
+/// l'écran d'accueil du téléphone.
+class _SplashLogo extends StatelessWidget {
+  const _SplashLogo();
+
+  static const double size = 136;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.225),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: size * 0.18,
+            offset: Offset(0, size * 0.06),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset(
+        'assets/images/app_icon.png',
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.medium,
       ),
     );
   }
