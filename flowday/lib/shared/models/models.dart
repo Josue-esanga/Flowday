@@ -14,12 +14,25 @@ class Category {
     name: json['name'] as String,
     color: _hexToColor(json['color'] as String? ?? '#000000'),
   );
+
+  /// Vers l'API / le cache local (F8).
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'color': colorToHex(color),
+  };
 }
 
 /// Convertit une couleur hexadécimale « #RRGGBB » en [Color].
 Color _hexToColor(String hex) {
   final value = hex.replaceFirst('#', '');
   return Color(int.parse('FF$value', radix: 16));
+}
+
+/// Convertit une [Color] en « #RRGGBB » (format de l'API et du cache local).
+String colorToHex(Color color) {
+  final value = color.toARGB32() & 0xFFFFFF;
+  return '#${value.toRadixString(16).padLeft(6, '0').toUpperCase()}';
 }
 
 /// Tâche planifiée (README §5), adaptée aux formats de l'API :
@@ -80,6 +93,37 @@ class TaskItem {
     final parts = raw.split(':');
     return '${parts[0].padLeft(2, '0')}:${parts.length > 1 ? parts[1] : '00'}';
   }
+
+  /// Vers l'API / le cache local (F8) : mêmes clés que [TaskItem.fromJson].
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'description': description,
+    'date': date,
+    'time': time,
+    'completed': completed,
+    'category': category.id,
+    'category_name': category.name,
+    'category_color': colorToHex(category.color),
+  };
+
+  /// Copie avec les champs fournis remplacés (mutations hors ligne).
+  TaskItem copyWith({
+    String? title,
+    String? description,
+    String? date,
+    String? time,
+    Category? category,
+    bool? completed,
+  }) => TaskItem(
+    id: id,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    date: date ?? this.date,
+    time: time ?? this.time,
+    category: category ?? this.category,
+    completed: completed ?? this.completed,
+  );
 }
 
 /// Jour du sélecteur de semaine (README §3.1).
@@ -121,4 +165,11 @@ class ProfileStats {
     completedTasks: (json['completed_tasks'] as num?)?.toInt() ?? 0,
     tasksThisWeek: (json['tasks_this_week'] as num?)?.toInt() ?? 0,
   );
+
+  /// Vers le cache local (F8).
+  Map<String, dynamic> toJson() => {
+    'total_tasks': totalTasks,
+    'completed_tasks': completedTasks,
+    'tasks_this_week': tasksThisWeek,
+  };
 }

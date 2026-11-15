@@ -46,6 +46,11 @@ class AppLocalizations {
       ? '$count task${count == 1 ? '' : 's'}'
       : '$count tâche${count > 1 ? 's' : ''}';
 
+  /// Bandeau hors ligne (F8) : modifications en attente de synchronisation.
+  String offlinePending(int count) => isEnglish
+      ? 'Offline — $count pending ${count == 1 ? 'change' : 'changes'}.'
+      : 'Hors ligne — $count modification${count > 1 ? 's' : ''} en attente.';
+
   String plannedTasks(int count) {
     if (isEnglish) {
       if (count == 0) return 'No tasks planned';
@@ -359,6 +364,8 @@ class AppLocalizations {
     'Terminée': 'Done',
     'À faire': 'To do',
     'Impossible de contacter le serveur.': 'Unable to reach the server.',
+    'Hors ligne — données enregistrées sur cet appareil.':
+        'Offline — data saved on this device.',
     'Action impossible pour le moment. Réessayez.':
         'Action unavailable right now. Try again.',
     'Aucune tâche dans cette catégorie': 'No tasks in this category',

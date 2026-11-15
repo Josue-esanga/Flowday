@@ -118,6 +118,7 @@ class AuthProvider extends ChangeNotifier implements TokenSource {
   String? get avatar => _avatar;
 
   /// Identifiant Supabase du compte (dossier Storage des photos).
+  @override
   String? get userId {
     final id = _session?.id;
     return id == null || id.isEmpty ? null : id;

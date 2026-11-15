@@ -79,6 +79,10 @@ abstract class TokenSource {
 
   /// Rafraîchit la session ; `false` = plus de session valide.
   Future<bool> refreshSession();
+
+  /// Identifiant du compte connecté — sert de clé au cache local (F8)
+  /// et aux objets Storage (photos de profil).
+  String? get userId => null;
 }
 
 /// Client d'authentification Supabase (GoTrue) en **accès direct** :

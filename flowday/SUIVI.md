@@ -2,9 +2,9 @@
 
 Ce document liste tout ce qui est réalisé dans le projet, étape par étape.
 **Phase actuelle : design ✅ + backend Django/DRF ✅ + Flutter branché sur
-l'API ✅ (MVP F1–F8 fonctionnel de bout en bout).**
-Prochaine étapes possibles : mode hors ligne (cache local), authentification,
-notifications (post-MVP).
+l'API ✅ (MVP F1–F8 fonctionnel de bout en bout, cache local hors ligne inclus).**
+Étapes suivantes possibles : synchronisation temps réel, statistiques
+avancées (post-MVP).
 
 ---
 
@@ -114,7 +114,9 @@ lib/
   connexion/inscription/déconnexion, renouvellement des jetons) et
   `TasksProvider` (ChangeNotifier) — état partagé entre
   accueil / timeline / calendrier / profil, chargements et mutations.
-- `shared/data` : `TaskRepository` convertit le JSON de Supabase en modèles.
+- `shared/data` : `TaskRepository` convertit le JSON de Supabase en modèles ;
+  `LocalStore` conserve par compte la dernière photographie connue (tâches,
+  catégories, statistiques) et la file des mutations hors ligne.
 - `features/*/presentation` : écrans branchés sur le provider.
 - Les données de maquette sont déplacées dans `test/fixtures/`
   (fixture des tests, plus aucun écran ne les utilise).
@@ -219,7 +221,8 @@ cd ../flowday_api
 |---|---|---|
 | Réseau | `lib/core/network/supabase_config.dart` + `supabase_rest_client.dart` | `SupabaseConfig` (URL du projet + clé anon) et `SupabaseRestClient` : accès direct PostgREST (filtres `eq./gte./lte.`, catégorie embarquée, `Prefer: return=representation`, timeout 10 s, erreurs → `ApiException`) — l'ancien `ApiClient` (URL par plateforme) a été retiré en phase 4 |
 | Erreurs | `lib/core/errors/api_exception.dart` | `ApiException` : code HTTP + message (PostgREST ou DRF) + erreurs par champ (`{'title': …}`) |
-| Repository | `lib/shared/data/task_repository.dart` | `TaskRepository` : `fetchCategories`, `fetchTasks(date/start/end/category)`, `createTask`, `updateTask`, `deleteTask`, `toggleTask`, `fetchStats` → JSON converti en modèles |
+| Repository | `lib/shared/data/task_repository.dart` | `TaskRepository` : `fetchCategories`, `fetchTasks(date/start/end/category)`, `createTask`, `updateTask`, `deleteTask`, `toggleTask`, `fetchStats` → JSON converti en modèles ; bascule sur le cache local en cas de panne réseau (F8) |
+| Cache local | `lib/shared/data/local_store.dart` | `LocalStore` : photographie JSON par compte dans `SharedPreferences` (`flowday.cache.v1.<user id>`), filtres `tasksFor`, file d'attente des mutations (`enqueue`/`pending`/`dropPending`), tout best-effort (une erreur de stockage ne casse jamais le réseau) |
 | État | `lib/core/providers/tasks_provider.dart` | `TasksProvider` (ChangeNotifier) : catégories, tâches d'aujourd'hui / d'hier / du jour sélectionné, stats, `selectDate` (partagé timeline ↔ calendrier), mutations F3→F6 avec mise à jour optimiste et rollback, états loading/erreur |
 | Modèles | `lib/shared/models/models.dart` | `TaskItem` porte `date` (`AAAA-MM-JJ`) et `time` (`HH:MM`) avec `timeLabel` (`02:00 PM`), `Category.fromJson`, `ProfileStats` (taux recalculé côté client) |
 | Dates | `lib/shared/utils/date_utils.dart` | `FlowDates` : formats API/affichage, noms de mois/jours, semaine lundi→dimanche (sans dépendance `intl`) |
@@ -916,6 +919,12 @@ Vérifications : `flutter analyze` **0 problème**, `flutter test`
 - Les données affichées viennent de l'API (`../flowday_api`) via
   `TaskRepository` + `TasksProvider` ; `mock_data.dart` ne sert plus qu'aux
   tests (déplacé dans `test/fixtures/`).
-- Hors ligne (F8) : pas encore de cache local — si le serveur est
-  indisponible, les écrans affichent un état d'erreur avec « Réessayer ».
-  Un cache (Hive/SharedPreferences) reste prévu en post-MVP.
+- **Hors ligne (F8)** : chaque lecture réussie alimente un cache local par
+  compte (`LocalStore` sur `SharedPreferences`, aucune dépendance
+  supplémentaire). Si le réseau est indisponible (ou le serveur en 5xx), les
+  écrans affichent les dernières données connues et un bandeau « Hors ligne »
+  en haut de la coque ; les créations / modifications / suppressions sont
+  appliquées localement puis **rejouées** au retour de la connexion
+  (`TaskRepository.syncPending`, bouton « Réessayer » du bandeau).
+  Le cache est conservé à la déconnexion (clé par compte : aucun mélange
+  entre utilisateurs) et vidé uniquement sur demande explicite.

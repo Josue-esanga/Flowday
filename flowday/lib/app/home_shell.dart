@@ -13,6 +13,7 @@ import '../features/tasks/presentation/task_form_screen.dart';
 import '../features/tasks/presentation/timeline_screen.dart';
 import '../shared/models/models.dart';
 import '../shared/widgets/bottom_nav_bar.dart';
+import '../shared/widgets/offline_banner.dart';
 
 /// Coque principale : barre de navigation (4 destinations + bouton +)
 /// et contenu de l'onglet courant.
@@ -110,7 +111,9 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: IndexedStack(index: _selectedIndex, children: pages),
+      body: OfflineBannerHost(
+        child: IndexedStack(index: _selectedIndex, children: pages),
+      ),
       bottomNavigationBar: BottomNavBar(
         selectedIndex: _selectedIndex,
         onSelected: _onTabSelected,

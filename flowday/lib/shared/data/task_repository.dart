@@ -1,10 +1,14 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' hide Category;
+import 'package:flutter/material.dart' show Color;
+
 import '../../core/errors/api_exception.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/network/supabase_auth_client.dart';
 import '../../core/network/supabase_rest_client.dart';
 import '../models/models.dart';
+import 'local_store.dart';
 
 /// Accès aux données en **accès direct Supabase** (PostgREST) : la couche
 /// data du README §7, sans serveur intermédiaire (voir SUIVI « Phase 4 »).
@@ -18,11 +22,37 @@ import '../models/models.dart';
 /// La catégorie est **embarquée** via la clé étrangère
 /// (`select=…,planning_category(id,name,color)`) : une seule requête par
 /// liste de tâches. Les erreurs HTTP sont levées sous forme d'`ApiException`.
+///
+/// **F8 — stockage local / hors ligne** : chaque lecture réussie alimente
+/// un cache local par compte ([LocalStore]). Si le réseau est indisponible,
+/// les lectures sont servies depuis ce cache et les mutations sont
+/// appliquées localement puis rejouées au retour de la connexion
+/// ([syncPending]).
 class TaskRepository {
-  TaskRepository({SupabaseRestClient? client, TokenSource? auth})
-    : _client = client ?? SupabaseRestClient(tokens: auth);
+  TaskRepository({
+    SupabaseRestClient? client,
+    TokenSource? auth,
+    LocalStore? store,
+  }) : _client = client ?? SupabaseRestClient(tokens: auth),
+       _auth = auth,
+       _store = store ?? LocalStore();
 
   final SupabaseRestClient _client;
+  final TokenSource? _auth;
+  final LocalStore _store;
+
+  /// Vrai quand la dernière opération a été servie **hors ligne**
+  /// (cache local ou file d'attente).
+  bool _offline = false;
+
+  /// Compte dont le cache est chargé (évite de recharger à chaque appel).
+  String? _boundUser;
+  bool _bound = false;
+
+  bool get isOffline => _offline;
+
+  /// Nombre de modifications locales restant à synchroniser.
+  int get pendingWrites => _store.pendingCount;
 
   /// 404 : la mutation n'a touché aucune ligne (déjà supprimée / inexistante).
   ApiException get _notFound => ApiException(
@@ -36,14 +66,127 @@ class TaskRepository {
       'planning_category(id,name,color)';
 
   // ---------------------------------------------------------------------
+  // Cache local (F8)
+  // ---------------------------------------------------------------------
+
+  /// Charge le cache du compte connecté (no-op s'il est déjà chargé).
+  Future<void> _syncCache() async {
+    final userId = _auth?.userId;
+    if (_bound && _boundUser == userId) return;
+    _boundUser = userId;
+    _bound = true;
+    // Nouveau compte (ou déconnexion) : l'état hors ligne repart de zéro.
+    _offline = false;
+    try {
+      await _store.bind(userId);
+    } on Object catch (error) {
+      debugPrint('TaskRepository : cache local indisponible ($error)');
+    }
+  }
+
+  /// Une panne réseau (code 0) ou un serveur indisponible (5xx) peut être
+  /// absorbé par le cache ; une erreur métier (4xx) est toujours remontée.
+  bool _canFallback(Object error) =>
+      error is ApiException && (error.isNetwork || error.statusCode >= 500);
+
+  TaskItem? _cachedTask(String id) {
+    for (final task in _store.tasks) {
+      if (task.id == id) return task;
+    }
+    return null;
+  }
+
+  /// Pousse les modifications faites hors ligne vers le serveur.
+  ///
+  /// Les opérations sont rejouées dans l'ordre. Une opération définitivement
+  /// invalide (4xx) est abandonnée ; une panne réseau interrompt la
+  /// synchronisation et la file est conservée pour un prochain essai.
+  Future<void> syncPending() async {
+    await _syncCache();
+    await _flushPending();
+  }
+
+  Future<void> _flushPending() async {
+    while (_store.pendingCount > 0) {
+      final operation = _store.pending.first;
+      try {
+        await _applyPending(operation);
+      } on ApiException catch (error) {
+        if (error.isNetwork || error.statusCode >= 500) rethrow;
+        // 4xx : l'opération ne pourra jamais aboutir (tâche supprimée
+        // entre-temps, données invalides…) → on l'abandonne.
+        debugPrint(
+          'TaskRepository : opération hors ligne abandonnée '
+          '(${error.statusCode})',
+        );
+      }
+      await _store.dropPending(1);
+    }
+    _offline = false;
+  }
+
+  Future<void> _applyPending(Map<String, dynamic> operation) async {
+    switch (operation['op']) {
+      case 'create':
+        final body = operation['body'];
+        if (body is! Map<String, dynamic>) return;
+        try {
+          await _client.post(
+            'planning_task',
+            query: {'select': 'id'},
+            body: body,
+          );
+        } on ApiException catch (error) {
+          // 409 : déjà créée lors d'une synchronisation interrompue.
+          if (error.statusCode != 409) rethrow;
+        }
+      case 'update':
+        final id = operation['id'];
+        final patch = operation['patch'];
+        if (id is! String || patch is! Map<String, dynamic>) return;
+        if (patch.isEmpty) return;
+        await _client.patch(
+          'planning_task',
+          query: {'id': 'eq.$id'},
+          body: patch,
+        );
+      case 'complete':
+        final id = operation['id'];
+        if (id is! String) return;
+        await _client.patch(
+          'planning_task',
+          query: {'id': 'eq.$id'},
+          body: {'completed': operation['completed'] == true},
+        );
+      case 'delete':
+        final id = operation['id'];
+        if (id is! String) return;
+        await _client.delete('planning_task', query: {'id': 'eq.$id'});
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // F7 — catégories
   // ---------------------------------------------------------------------
   Future<List<Category>> fetchCategories() async {
-    final rows = await _client.get(
-      'planning_category',
-      query: {'select': 'id,name,color', 'order': 'name.asc'},
-    );
-    return rows.map(Category.fromJson).toList();
+    await _syncCache();
+    try {
+      await _flushPending();
+      final rows = await _client.get(
+        'planning_category',
+        query: {'select': 'id,name,color', 'order': 'name.asc'},
+      );
+      final categories = rows.map(Category.fromJson).toList();
+      await _store.putCategories(categories);
+      _offline = false;
+      return categories;
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      final cached = _store.categories;
+      if (cached.isEmpty && !_store.hasSnapshot) rethrow;
+      _offline = true;
+      return cached;
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -55,6 +198,7 @@ class TaskRepository {
     String? end,
     String? category,
   }) async {
+    await _syncCache();
     final query = <String, Object>{
       'select': _taskSelect,
       'order': 'date.asc,time.asc',
@@ -67,8 +211,24 @@ class TaskRepository {
     }
     if (category != null) query['category_id'] = 'eq.$category';
 
-    final rows = await _client.get('planning_task', query: query);
-    return rows.map(_taskFromRow).toList();
+    try {
+      await _flushPending();
+      final rows = await _client.get('planning_task', query: query);
+      final tasks = rows.map(_taskFromRow).toList();
+      await _store.putTasks(tasks);
+      _offline = false;
+      return tasks;
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      if (!_store.hasSnapshot) rethrow;
+      _offline = true;
+      return _store.tasksFor(
+        date: date,
+        start: start,
+        end: end,
+        category: category,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -81,29 +241,59 @@ class TaskRepository {
     required String time,
     required String categoryId,
   }) async {
-    final rows = await _client.post(
-      'planning_task',
-      query: {'select': _taskSelect},
-      body: {
-        // `id` et `created_at` sont NOT NULL **sans défaut** en base
-        // (Django les génère côté Python) : on fait pareil côté client.
-        'id': _newUuid(),
-        'title': title,
-        'description': description,
-        'date': date,
-        'time': time,
-        'completed': false,
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-        'category_id': categoryId,
-      },
-    );
-    if (rows.isEmpty) {
-      throw ApiException(
-        statusCode: 400,
-        message: AppLocalizations.instance.t("La tâche n'a pas pu être créée."),
+    await _syncCache();
+    // `id` et `created_at` sont NOT NULL **sans défaut** en base
+    // (Django les génère côté Python) : on fait pareil côté client, ce qui
+    // permet aussi de créer la tâche hors ligne avec son identifiant final.
+    final id = _newUuid();
+    final body = <String, dynamic>{
+      'id': id,
+      'title': title,
+      'description': description,
+      'date': date,
+      'time': time,
+      'completed': false,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'category_id': categoryId,
+    };
+
+    try {
+      await _flushPending();
+      final rows = await _client.post(
+        'planning_task',
+        query: {'select': _taskSelect},
+        body: body,
       );
+      if (rows.isEmpty) {
+        throw ApiException(
+          statusCode: 400,
+          message: AppLocalizations.instance.t(
+            "La tâche n'a pas pu être créée.",
+          ),
+        );
+      }
+      final task = _taskFromRow(rows.first);
+      await _store.putTask(task);
+      _offline = false;
+      return task;
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      final task = TaskItem(
+        id: id,
+        title: title,
+        description: description,
+        date: date,
+        time: time,
+        category:
+            _store.categoryById(categoryId) ??
+            Category(id: categoryId, name: '', color: const Color(0xFF7C7C8A)),
+        completed: false,
+      );
+      await _store.putTask(task);
+      await _store.enqueue({'op': 'create', 'body': body});
+      _offline = true;
+      return task;
     }
-    return _taskFromRow(rows.first);
   }
 
   // ---------------------------------------------------------------------
@@ -117,6 +307,7 @@ class TaskRepository {
     String? time,
     String? categoryId,
   }) async {
+    await _syncCache();
     final body = <String, dynamic>{
       'title': ?title,
       'description': ?description,
@@ -126,21 +317,56 @@ class TaskRepository {
     };
     if (body.isEmpty) return _fetchOne(id); // rien à changer : état actuel
 
-    final rows = await _client.patch(
-      'planning_task',
-      query: {'id': 'eq.$id', 'select': _taskSelect},
-      body: body,
-    );
-    if (rows.isEmpty) throw _notFound;
-    return _taskFromRow(rows.first);
+    try {
+      await _flushPending();
+      final rows = await _client.patch(
+        'planning_task',
+        query: {'id': 'eq.$id', 'select': _taskSelect},
+        body: body,
+      );
+      if (rows.isEmpty) throw _notFound;
+      final task = _taskFromRow(rows.first);
+      await _store.putTask(task);
+      _offline = false;
+      return task;
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      final cached = _cachedTask(id);
+      if (cached == null) rethrow;
+      final updated = cached.copyWith(
+        title: title,
+        description: description,
+        date: date,
+        time: time,
+        category: categoryId == null ? null : _store.categoryById(categoryId),
+      );
+      await _store.putTask(updated);
+      await _store.enqueue({'op': 'update', 'id': id, 'patch': body});
+      _offline = true;
+      return updated;
+    }
   }
 
   // ---------------------------------------------------------------------
   // F5 — suppression
   // ---------------------------------------------------------------------
   Future<void> deleteTask(String id) async {
-    final rows = await _client.delete('planning_task', query: {'id': 'eq.$id'});
-    if (rows.isEmpty) throw _notFound; // déjà absente → 404
+    await _syncCache();
+    try {
+      await _flushPending();
+      final rows = await _client.delete(
+        'planning_task',
+        query: {'id': 'eq.$id'},
+      );
+      if (rows.isEmpty) throw _notFound; // déjà absente → 404
+      await _store.removeTask(id);
+      _offline = false;
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      await _store.removeTask(id);
+      await _store.enqueue({'op': 'delete', 'id': id});
+      _offline = true;
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -160,13 +386,33 @@ class TaskRepository {
   /// Définit l'état demandé directement (le provider connaît déjà la
   /// nouvelle valeur), sans relire l'état courant avant le PATCH.
   Future<TaskItem> setTaskCompleted(String id, bool completed) async {
-    final rows = await _client.patch(
-      'planning_task',
-      query: {'id': 'eq.$id', 'select': _taskSelect},
-      body: {'completed': completed},
-    );
-    if (rows.isEmpty) throw _notFound;
-    return _taskFromRow(rows.first);
+    await _syncCache();
+    try {
+      await _flushPending();
+      final rows = await _client.patch(
+        'planning_task',
+        query: {'id': 'eq.$id', 'select': _taskSelect},
+        body: {'completed': completed},
+      );
+      if (rows.isEmpty) throw _notFound;
+      final task = _taskFromRow(rows.first);
+      await _store.putTask(task);
+      _offline = false;
+      return task;
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      final cached = _cachedTask(id);
+      if (cached == null) rethrow;
+      final updated = cached.copyWith(completed: completed);
+      await _store.putTask(updated);
+      await _store.enqueue({
+        'op': 'complete',
+        'id': id,
+        'completed': completed,
+      });
+      _offline = true;
+      return updated;
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -175,30 +421,45 @@ class TaskRepository {
   /// Recalculées côté client (une seule requête `select=completed,date`),
   /// avec la même règle que le backend : tâches du lundi à aujourd'hui.
   Future<ProfileStats> fetchStats() async {
-    final rows = await _client.get(
-      'planning_task',
-      query: {'select': 'completed,date'},
-    );
+    await _syncCache();
+    try {
+      await _flushPending();
+      final rows = await _client.get(
+        'planning_task',
+        query: {'select': 'completed,date'},
+      );
 
-    final today = DateTime.now();
-    final day0 = DateTime(today.year, today.month, today.day);
-    final weekStart = day0.subtract(Duration(days: day0.weekday - 1)); // lundi
+      final today = DateTime.now();
+      final day0 = DateTime(today.year, today.month, today.day);
+      final weekStart = day0.subtract(
+        Duration(days: day0.weekday - 1),
+      ); // lundi
 
-    var completed = 0;
-    var thisWeek = 0;
-    for (final row in rows) {
-      if (row['completed'] == true) completed++;
-      final parsed = DateTime.tryParse('${row['date']}');
-      if (parsed == null) continue;
-      final day = DateTime(parsed.year, parsed.month, parsed.day);
-      if (!day.isBefore(weekStart) && !day.isAfter(day0)) thisWeek++;
+      var completed = 0;
+      var thisWeek = 0;
+      for (final row in rows) {
+        if (row['completed'] == true) completed++;
+        final parsed = DateTime.tryParse('${row['date']}');
+        if (parsed == null) continue;
+        final day = DateTime(parsed.year, parsed.month, parsed.day);
+        if (!day.isBefore(weekStart) && !day.isAfter(day0)) thisWeek++;
+      }
+
+      final stats = ProfileStats(
+        totalTasks: rows.length,
+        completedTasks: completed,
+        tasksThisWeek: thisWeek,
+      );
+      await _store.putStats(stats);
+      _offline = false;
+      return stats;
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      final cached = _store.stats;
+      if (cached == null) rethrow;
+      _offline = true;
+      return cached;
     }
-
-    return ProfileStats(
-      totalTasks: rows.length,
-      completedTasks: completed,
-      tasksThisWeek: thisWeek,
-    );
   }
 
   // ---------------------------------------------------------------------

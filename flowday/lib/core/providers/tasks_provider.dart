@@ -95,6 +95,26 @@ class TasksProvider extends ChangeNotifier {
   Future<void> retry() => loadInitial();
 
   // ---------------------------------------------------------------------
+  // F8 — stockage local / hors ligne
+  // ---------------------------------------------------------------------
+  /// Vrai quand les données affichées proviennent du cache local.
+  bool get isOffline => repository.isOffline;
+
+  /// Modifications locales restant à synchroniser avec le serveur.
+  int get pendingWrites => repository.pendingWrites;
+
+  /// Bouton « Réessayer » du bandeau hors ligne : pousse d'abord les
+  /// modifications en attente, puis recharge les données.
+  Future<void> retrySync() async {
+    try {
+      await repository.syncPending();
+    } catch (_) {
+      // Toujours hors ligne : le bandeau reste affiché.
+    }
+    await loadInitial();
+  }
+
+  // ---------------------------------------------------------------------
   // Calendrier — repères des jours qui contiennent des tâches
   // ---------------------------------------------------------------------
   String _calendarMonthKey(int year, int month) =>

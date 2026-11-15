@@ -171,6 +171,18 @@ class FakeTaskRepository implements TaskRepository {
   Future<ProfileStats> fetchStats() async =>
       const ProfileStats(totalTasks: 30, completedTasks: 12, tasksThisWeek: 24);
 
+  // ---------------------------------------------------------------------
+  // F8 — hors ligne (jamais utilisé dans les tests de rendu)
+  // ---------------------------------------------------------------------
+  @override
+  bool get isOffline => false;
+
+  @override
+  int get pendingWrites => 0;
+
+  @override
+  Future<void> syncPending() async {}
+
   Category _category(String id) => MockData.categories.firstWhere(
     (c) => c.id == id,
     orElse: () => MockData.work,
