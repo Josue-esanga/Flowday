@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Le splash reste blanc même lorsque le téléphone est en mode sombre :
-         le premier écran natif se confond ainsi avec le splash Flowday. -->
+    <!-- Mode sombre : même comportement qu'en mode clair — pas d'aperçu de
+         démarrage, l'application s'ouvre directement sur son splash. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowBackground">@android:color/white</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@android:color/white</item>

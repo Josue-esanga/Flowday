@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ (API 31) : le splash système reprend l'icône de
-         l'application (même logo) sur fond blanc, en mode clair comme en
-         mode sombre. Le logo détaillé est ensuite dessiné par Flutter. -->
+    <!-- Android 12+ (API 31) impose un splash système : il reprend l'icône
+         de l'application sur le fond du splash Flutter, puis celui-ci
+         prend le relais — aucun écran intermédiaire. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowDisablePreview">true</item>
         <item name="android:windowSplashScreenBackground">@android:color/white</item>
         <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowBackground">@android:color/white</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@android:color/white</item>

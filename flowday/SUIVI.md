@@ -895,6 +895,87 @@ Vérifications : `flutter analyze` **0 problème**, `flutter test`
 
 ---
 
+## 🎨 Itération 8 — hors ligne, splash sans écran blanc, photo sur Storage (réalisé)
+
+### 1. F8 — utilisation hors ligne
+
+- **`LocalStore`** (`lib/shared/data/local_store.dart`, `SharedPreferences`) :
+  photographie JSON par compte (`flowday.cache.v1.<user id>`) des tâches,
+  catégories et statistiques, plus la **file d'attente** des mutations
+  (`enqueue` / `pending` / `dropPending`). Toutes les opérations sont
+  best-effort : une erreur de stockage ne casse jamais l'accès réseau.
+- **`TaskRepository`** : chaque lecture réussie alimente le cache ; si le
+  réseau est indisponible (ou le serveur en 5xx), les écrans affichent les
+  dernières données connues. Créations / modifications / suppressions sont
+  appliquées localement puis **rejouées** au retour de la connexion
+  (`syncPending`).
+- **Bandeau « Hors ligne »** (`lib/shared/widgets/offline_banner.dart`,
+  hébergé par `lib/app/home_shell.dart`) en haut de la coque, avec bouton
+  **« Réessayer »**.
+- Le cache est **conservé à la déconnexion** (clé par compte : aucun mélange
+  entre utilisateurs) et vidé uniquement sur demande explicite.
+- Tests : `test/offline_test.dart` (7 tests) ; `FakeTaskRepository` mis à
+  jour pour implémenter les nouveaux membres publics.
+
+### 2. Splash — le logo est l'icône de l'application
+
+- `assets/images/app_icon.png` (master 1024 px) ajouté au projet,
+  `assets/images/` déclaré dans `pubspec.yaml`.
+- `_Splash` (`lib/app/app.dart`) affiche **l'image exacte de l'icône** via
+  `Image.asset` : carte arrondie de 136 px (rayon 22,5 %, comme l'icône du
+  téléphone), ombre douce, puis « Flowday » en Dancing Script 38 px et un
+  indicateur de chargement.
+- **Préchargement** dans `lib/main.dart` (`_preloadSplashLogo`, timeout 2 s)
+  avant `runApp` : l'icône est déjà décodée quand Flutter peint sa première
+  image, donc le splash s'affiche complet du premier coup.
+- `lib/shared/widgets/flowday_logo.dart` (painter) est revenu à sa **version
+  d'origine** ; il n'est plus utilisé que par l'onboarding. Les icônes de
+  l'application (`mipmap-*`) et les anciens assets de lancement avaient été
+  générés depuis ce même logo.
+
+### 3. Écran de lancement natif supprimé
+
+- Suppression de `drawable-*/launch_logo.png`,
+  `drawable/launch_background.xml` et `drawable-v21/launch_background.xml` :
+  plus aucun écran blanc avec logo n'est dessiné avant le splash.
+- `LaunchTheme` (clair, sombre et Android 12+) :
+  `android:windowDisablePreview=true` → le téléphone reste sur l'écran
+  précédent jusqu'à la première image Flutter, qui est **directement le
+  splash** ; `windowBackground` = blanc, identique au fond du splash.
+- **Android 12+** impose un splash système : il reprend l'icône de
+  l'application sur fond blanc, puis le splash Flutter prend le relais — les
+  deux se confondent, aucun écran intermédiaire.
+- **iOS** : `LaunchScreen.storyboard` conserve le logo (écran imposé par la
+  plateforme), identique au splash Flutter.
+
+### 4. Photo de profil sur Supabase Storage
+
+- `SupabaseStorageClient` : envoi et suppression de l'image dans le bucket
+  public **`avatars`** (`avatars/<user id>/avatar.<ext>`), URL publique
+  enregistrée dans le profil.
+- Script **`supabase/avatars_bucket.sql`** (création du bucket + politiques
+  RLS) à exécuter une seule fois dans Supabase → SQL Editor (la clé anon ne
+  peut pas créer le bucket).
+- Tant que le bucket n'existe pas, l'app affiche un message explicite
+  (« L'envoi des photos n'est pas encore activé »).
+
+### 5. Finitions
+
+- **Notifications** : autorisation demandée avec la boîte de dialogue native
+  du téléphone **après la connexion** (une seule fois), via
+  `TaskReminderService.requestPermissionAfterLogin`.
+- **Thème** : bascule néomorphique dans les paramètres (`ThemeModeSwitch`),
+  choix persisté ; le splash reste blanc dans les deux thèmes.
+- **Calendrier** : pastille sous la date sélectionnée.
+- **Langue** : français par défaut ; libellés anglais conservés dans le
+  formulaire de tâche (« Title * », « Description », « Date », « Time »).
+
+Vérifications : `flutter analyze` **0 problème**, `flutter test`
+**44 tests OK + 2 skip (live)**, `flutter build apk --debug` **OK** (asset
+`assets/images/app_icon.png` présent dans l'APK).
+
+---
+
 ## 📝 Notes / décisions de design
 
 - **Refonte du design** : le design initial (sombre + orange) a été remplacé

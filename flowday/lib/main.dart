@@ -9,9 +9,9 @@ import 'core/services/task_reminder_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // L'icône du splash (et de l'application) est décodée **avant** la
-  // première image Flutter : l'écran de lancement natif — qui affiche déjà
-  // ce logo — reste affiché le temps du décodage, puis le splash Flutter
-  // apparaît complet, sans clignotement.
+  // première image Flutter : il n'y a aucun écran de lancement natif à
+  // attendre, et le splash apparaît complet dès la toute première image,
+  // sans clignotement.
   await Future.wait([
     TaskReminderService.instance.initialize(),
     _preloadSplashLogo(),
