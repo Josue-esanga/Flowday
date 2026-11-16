@@ -177,7 +177,7 @@ class _TimelineBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<TasksProvider>();
 
-    if (state.dayLoading) {
+    if (state.dayLoading && state.dayTasks.isEmpty) {
       // Liste en skeleton (timeline groupée par heure).
       return const SkeletonTaskList(itemCount: 5);
     }
@@ -223,23 +223,32 @@ class _TimelineBody extends StatelessWidget {
       return const _EmptyState();
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
-      itemCount: tasks.length,
-      itemBuilder: (context, index) {
-        final task = tasks[index];
-        return TimelineTask(
-          title: task.title,
-          description: task.description,
-          time: task.timeLabel,
-          category: task.category,
-          completed: task.completed,
-          featured: index == 0,
-          isLast: index == tasks.length - 1,
-          onTap: () => _openEdit(context, task),
-          onToggle: () => onToggle(task),
-        );
-      },
+    // Changement de jour : la liste précédente reste affichée (atténuée)
+    // pendant le chargement, au lieu de clignoter en skeleton.
+    return IgnorePointer(
+      ignoring: state.dayLoading,
+      child: AnimatedOpacity(
+        opacity: state.dayLoading ? 0.45 : 1,
+        duration: const Duration(milliseconds: 150),
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+          itemCount: tasks.length,
+          itemBuilder: (context, index) {
+            final task = tasks[index];
+            return TimelineTask(
+              title: task.title,
+              description: task.description,
+              time: task.timeLabel,
+              category: task.category,
+              completed: task.completed,
+              featured: index == 0,
+              isLast: index == tasks.length - 1,
+              onTap: () => _openEdit(context, task),
+              onToggle: () => onToggle(task),
+            );
+          },
+        ),
+      ),
     );
   }
 

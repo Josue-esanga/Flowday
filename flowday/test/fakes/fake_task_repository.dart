@@ -183,6 +183,9 @@ class FakeTaskRepository implements TaskRepository {
   @override
   Future<void> syncPending() async {}
 
+  @override
+  Future<void> retryNow() async {}
+
   Category _category(String id) => MockData.categories.firstWhere(
     (c) => c.id == id,
     orElse: () => MockData.work,

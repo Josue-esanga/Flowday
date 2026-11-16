@@ -77,20 +77,29 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  void _openTaskForm([TaskItem? task]) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => TaskFormScreen(task: task)));
+  /// Empêche d'empiler deux écrans quand un bouton est tapé deux fois très
+  /// vite (double appui = écran dupliqué, bug visuel classique).
+  bool _navigating = false;
+
+  /// Ouvre [page] en ignorant les appuis supplémentaires pendant la
+  /// transition.
+  Future<void> _push(Widget page) async {
+    if (_navigating) return;
+    _navigating = true;
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => page),
+      );
+    } finally {
+      _navigating = false;
+    }
   }
 
+  void _openTaskForm([TaskItem? task]) => _push(TaskFormScreen(task: task));
+
   /// Ouvre la page « tâches de la catégorie » (flèche des cartes).
-  void _openCategory(Category category) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CategoryTasksScreen(category: category),
-      ),
-    );
-  }
+  void _openCategory(Category category) =>
+      _push(CategoryTasksScreen(category: category));
 
   @override
   Widget build(BuildContext context) {

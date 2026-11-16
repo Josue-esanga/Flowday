@@ -13,6 +13,7 @@ class OfflineBanner extends StatelessWidget {
     super.key,
     required this.pending,
     required this.onRetry,
+    this.busy = false,
   });
 
   /// Nombre de modifications en attente de synchronisation.
@@ -20,6 +21,10 @@ class OfflineBanner extends StatelessWidget {
 
   /// Relance la synchronisation (et le chargement) des données.
   final VoidCallback onRetry;
+
+  /// Vrai pendant une tentative : le bouton est remplacé par un indicateur
+  /// (un seul « Réessayer » à la fois).
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -52,22 +57,32 @@ class OfflineBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              TextButton(
-                onPressed: onRetry,
-                style: TextButton.styleFrom(
-                  foregroundColor: foreground,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  minimumSize: const Size(0, 28),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  context.tr('Réessayer'),
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
+              if (busy)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14),
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                TextButton(
+                  onPressed: onRetry,
+                  style: TextButton.styleFrom(
+                    foregroundColor: foreground,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    minimumSize: const Size(0, 28),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    context.tr('Réessayer'),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -107,8 +122,25 @@ class OfflineBannerHost extends StatelessWidget {
 }
 
 /// Bandeau alimenté par le provider (nombre de modifications en attente).
-class _OfflineBannerSlot extends StatelessWidget {
+class _OfflineBannerSlot extends StatefulWidget {
   const _OfflineBannerSlot();
+
+  @override
+  State<_OfflineBannerSlot> createState() => _OfflineBannerSlotState();
+}
+
+class _OfflineBannerSlotState extends State<_OfflineBannerSlot> {
+  bool _retrying = false;
+
+  Future<void> _retry() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    try {
+      await context.read<TasksProvider>().retrySync();
+    } finally {
+      if (mounted) setState(() => _retrying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +148,8 @@ class _OfflineBannerSlot extends StatelessWidget {
       selector: (_, tasks) => tasks.pendingWrites,
       builder: (context, pending, _) => OfflineBanner(
         pending: pending,
-        onRetry: () => context.read<TasksProvider>().retrySync(),
+        busy: _retrying,
+        onRetry: _retry,
       ),
     );
   }

@@ -45,6 +45,48 @@ class TaskRepository {
   /// (cache local ou file d'attente).
   bool _offline = false;
 
+  /// Instant de la dernière panne réseau constatée.
+  DateTime? _lastFailureAt;
+
+  /// Après une panne, on reste quelques secondes « hors ligne » : les
+  /// actions de l'utilisateur (cocher, créer, changer de jour…) répondent
+  /// **immédiatement** depuis le cache au lieu d'attendre le délai
+  /// d'expiration réseau (10 s) à chaque clic. Passé ce délai, le réseau
+  /// est retenté automatiquement (retour en ligne détecté tout seul).
+  static const Duration _offlineWindow = Duration(seconds: 15);
+
+  /// Une panne récente est connue → inutile de rappeler le réseau.
+  bool get _networkSkipped {
+    if (!_offline) return false;
+    final last = _lastFailureAt;
+    if (last == null) return false;
+    return DateTime.now().difference(last) < _offlineWindow;
+  }
+
+  /// Erreur synthétique levée quand le réseau est sauté : les opérations
+  /// basculent alors directement sur le cache local. Instance unique pour
+  /// pouvoir la reconnaître (`identical`) et ne pas relancer le délai de
+  /// calme à chaque clic hors ligne.
+  static final ApiException _offlineSentinel = ApiException(
+    statusCode: 0,
+    message: 'Hors ligne.',
+  );
+
+  ApiException get _offlineException => _offlineSentinel;
+
+  /// Mémorise une panne réseau (le délai de calme repart de zéro, sauf
+  /// quand le réseau a volontairement été sauté).
+  void _markOffline({bool refresh = true}) {
+    _offline = true;
+    if (refresh) _lastFailureAt = DateTime.now();
+  }
+
+  /// Connexion rétablie (une requête a abouti).
+  void _markOnline() {
+    _offline = false;
+    _lastFailureAt = null;
+  }
+
   /// Compte dont le cache est chargé (évite de recharger à chaque appel).
   String? _boundUser;
   bool _bound = false;
@@ -76,7 +118,7 @@ class TaskRepository {
     _boundUser = userId;
     _bound = true;
     // Nouveau compte (ou déconnexion) : l'état hors ligne repart de zéro.
-    _offline = false;
+    _markOnline();
     try {
       await _store.bind(userId);
     } on Object catch (error) {
@@ -106,11 +148,41 @@ class TaskRepository {
     await _flushPending();
   }
 
+  /// Bouton « Réessayer » du bandeau hors ligne : ignore la fenêtre de
+  /// calme, pousse la file puis vérifie que le serveur répond vraiment.
+  Future<void> retryNow() async {
+    await _syncCache();
+    _lastFailureAt = null; // force une tentative réseau immédiate
+    try {
+      await _flushPending();
+      if (!_offline) return;
+      // File vide : on vérifie explicitement que le serveur répond.
+      await _client.get('planning_category', query: {'select': 'id'});
+      _markOnline();
+    } on Object catch (error) {
+      if (!_canFallback(error)) rethrow;
+      _markOffline();
+    }
+  }
+
+  /// Tente le réseau, ou lève immédiatement [_offlineException] quand une
+  /// panne récente est connue : l'appelant bascule alors sur le cache sans
+  /// attendre le délai d'expiration (fluidité des clics hors ligne).
+  Future<void> _requireNetwork() async {
+    if (_networkSkipped) {
+      _markOffline(refresh: false);
+      throw _offlineException;
+    }
+    await _flushPending();
+  }
+
   Future<void> _flushPending() async {
+    var contacted = false;
     while (_store.pendingCount > 0) {
       final operation = _store.pending.first;
       try {
         await _applyPending(operation);
+        contacted = true;
       } on ApiException catch (error) {
         if (error.isNetwork || error.statusCode >= 500) rethrow;
         // 4xx : l'opération ne pourra jamais aboutir (tâche supprimée
@@ -122,7 +194,8 @@ class TaskRepository {
       }
       await _store.dropPending(1);
     }
-    _offline = false;
+    // Ne repasse « en ligne » que si le serveur a réellement répondu.
+    if (contacted) _markOnline();
   }
 
   Future<void> _applyPending(Map<String, dynamic> operation) async {
@@ -171,20 +244,20 @@ class TaskRepository {
   Future<List<Category>> fetchCategories() async {
     await _syncCache();
     try {
-      await _flushPending();
+      await _requireNetwork();
       final rows = await _client.get(
         'planning_category',
         query: {'select': 'id,name,color', 'order': 'name.asc'},
       );
       final categories = rows.map(Category.fromJson).toList();
       await _store.putCategories(categories);
-      _offline = false;
+      _markOnline();
       return categories;
     } on Object catch (error) {
       if (!_canFallback(error)) rethrow;
       final cached = _store.categories;
       if (cached.isEmpty && !_store.hasSnapshot) rethrow;
-      _offline = true;
+      _markOffline(refresh: !identical(error, _offlineSentinel));
       return cached;
     }
   }
@@ -212,16 +285,16 @@ class TaskRepository {
     if (category != null) query['category_id'] = 'eq.$category';
 
     try {
-      await _flushPending();
+      await _requireNetwork();
       final rows = await _client.get('planning_task', query: query);
       final tasks = rows.map(_taskFromRow).toList();
       await _store.putTasks(tasks);
-      _offline = false;
+      _markOnline();
       return tasks;
     } on Object catch (error) {
       if (!_canFallback(error)) rethrow;
       if (!_store.hasSnapshot) rethrow;
-      _offline = true;
+      _markOffline(refresh: !identical(error, _offlineSentinel));
       return _store.tasksFor(
         date: date,
         start: start,
@@ -258,7 +331,7 @@ class TaskRepository {
     };
 
     try {
-      await _flushPending();
+      await _requireNetwork();
       final rows = await _client.post(
         'planning_task',
         query: {'select': _taskSelect},
@@ -274,7 +347,7 @@ class TaskRepository {
       }
       final task = _taskFromRow(rows.first);
       await _store.putTask(task);
-      _offline = false;
+      _markOnline();
       return task;
     } on Object catch (error) {
       if (!_canFallback(error)) rethrow;
@@ -291,7 +364,7 @@ class TaskRepository {
       );
       await _store.putTask(task);
       await _store.enqueue({'op': 'create', 'body': body});
-      _offline = true;
+      _markOffline(refresh: !identical(error, _offlineSentinel));
       return task;
     }
   }
@@ -318,7 +391,7 @@ class TaskRepository {
     if (body.isEmpty) return _fetchOne(id); // rien à changer : état actuel
 
     try {
-      await _flushPending();
+      await _requireNetwork();
       final rows = await _client.patch(
         'planning_task',
         query: {'id': 'eq.$id', 'select': _taskSelect},
@@ -327,7 +400,7 @@ class TaskRepository {
       if (rows.isEmpty) throw _notFound;
       final task = _taskFromRow(rows.first);
       await _store.putTask(task);
-      _offline = false;
+      _markOnline();
       return task;
     } on Object catch (error) {
       if (!_canFallback(error)) rethrow;
@@ -342,7 +415,7 @@ class TaskRepository {
       );
       await _store.putTask(updated);
       await _store.enqueue({'op': 'update', 'id': id, 'patch': body});
-      _offline = true;
+      _markOffline(refresh: !identical(error, _offlineSentinel));
       return updated;
     }
   }
@@ -353,19 +426,19 @@ class TaskRepository {
   Future<void> deleteTask(String id) async {
     await _syncCache();
     try {
-      await _flushPending();
+      await _requireNetwork();
       final rows = await _client.delete(
         'planning_task',
         query: {'id': 'eq.$id'},
       );
       if (rows.isEmpty) throw _notFound; // déjà absente → 404
       await _store.removeTask(id);
-      _offline = false;
+      _markOnline();
     } on Object catch (error) {
       if (!_canFallback(error)) rethrow;
       await _store.removeTask(id);
       await _store.enqueue({'op': 'delete', 'id': id});
-      _offline = true;
+      _markOffline(refresh: !identical(error, _offlineSentinel));
     }
   }
 
@@ -388,7 +461,7 @@ class TaskRepository {
   Future<TaskItem> setTaskCompleted(String id, bool completed) async {
     await _syncCache();
     try {
-      await _flushPending();
+      await _requireNetwork();
       final rows = await _client.patch(
         'planning_task',
         query: {'id': 'eq.$id', 'select': _taskSelect},
@@ -397,7 +470,7 @@ class TaskRepository {
       if (rows.isEmpty) throw _notFound;
       final task = _taskFromRow(rows.first);
       await _store.putTask(task);
-      _offline = false;
+      _markOnline();
       return task;
     } on Object catch (error) {
       if (!_canFallback(error)) rethrow;
@@ -410,7 +483,7 @@ class TaskRepository {
         'id': id,
         'completed': completed,
       });
-      _offline = true;
+      _markOffline(refresh: !identical(error, _offlineSentinel));
       return updated;
     }
   }
@@ -423,7 +496,7 @@ class TaskRepository {
   Future<ProfileStats> fetchStats() async {
     await _syncCache();
     try {
-      await _flushPending();
+      await _requireNetwork();
       final rows = await _client.get(
         'planning_task',
         query: {'select': 'completed,date'},
@@ -451,13 +524,13 @@ class TaskRepository {
         tasksThisWeek: thisWeek,
       );
       await _store.putStats(stats);
-      _offline = false;
+      _markOnline();
       return stats;
     } on Object catch (error) {
       if (!_canFallback(error)) rethrow;
       final cached = _store.stats;
       if (cached == null) rethrow;
-      _offline = true;
+      _markOffline(refresh: !identical(error, _offlineSentinel));
       return cached;
     }
   }

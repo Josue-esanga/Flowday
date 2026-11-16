@@ -139,6 +139,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   }
 
   Future<void> _delete() async {
+    if (_saving) return; // un appui double ne doit pas empiler deux dialogues
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -171,16 +172,17 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    setState(() => _saving = true);
     final state = context.read<TasksProvider>();
     try {
       await state.deleteTask(widget.task!);
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('Suppression impossible.'))),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Suppression impossible.'))),
+      );
     }
   }
 

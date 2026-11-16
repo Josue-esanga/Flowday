@@ -212,8 +212,7 @@ void main() {
 
     test(
       'le provider expose l’état hors ligne sans erreur bloquante',
-      () async {
-        final backend = _Backend(seed: false);
+      () async {        final backend = _Backend(seed: false);
         final today = FlowDates.apiDate(DateTime.now());
         backend.tasks.add(_task(id: 'today', title: 'Du jour', date: today));
 
@@ -240,6 +239,64 @@ void main() {
         provider.dispose();
       },
     );
+
+    test(
+      'hors ligne : plus aucun appel réseau (clics instantanés)',
+      () async {
+        final backend = _Backend();
+        final repo = _repository(backend, 'u1');
+        await repo.fetchTasks(date: '2026-11-15'); // cache chaud
+
+        backend.online = false;
+        // Premier échec : le réseau est constaté indisponible.
+        await repo.fetchTasks(date: '2026-11-15');
+        expect(repo.isOffline, isTrue);
+        final attempts = backend.requests;
+
+        // Les actions suivantes répondent depuis le cache/file locale,
+        // sans rappeler le réseau (donc sans attendre le délai 10 s).
+        await repo.fetchTasks(date: '2026-11-15');
+        await repo.setTaskCompleted('t1', true);
+        await repo.createTask(
+          title: 'Acheter du pain',
+          date: '2026-11-15',
+          time: '09:30',
+          categoryId: 'work',
+        );
+        expect(backend.requests, attempts);
+        expect(repo.pendingWrites, 2);
+
+        // « Réessayer » force une vraie tentative et vide la file.
+        backend.online = true;
+        await repo.retryNow();
+        expect(repo.isOffline, isFalse);
+        expect(repo.pendingWrites, 0);
+        expect(backend.tasks, hasLength(2));
+      },
+    );
+
+    test('deux appuis rapides sur une tâche ne sont pas ignorés', () async {
+      final backend = _Backend(seed: false);
+      final today = FlowDates.apiDate(DateTime.now());
+      backend.tasks.add(_task(id: 'today', title: 'Du jour', date: today));
+
+      final provider = TasksProvider(repository: _repository(backend, 'u1'));
+      await provider.loadInitial();
+      final task = provider.todayTasks.single;
+      expect(task.completed, isFalse);
+
+      // Envoi ralenti : le 2e appui arrive pendant le 1er aller-retour.
+      backend.delay = const Duration(milliseconds: 40);
+      final first = provider.toggle(task);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      final second = provider.toggle(task);
+      await Future.wait([first, second]);
+
+      // État final = celui du dernier appui, côté écran **et** côté serveur.
+      expect(provider.todayTasks.single.completed, isFalse);
+      expect(backend.tasks.single['completed'], isFalse);
+      provider.dispose();
+    });
   });
 }
 
@@ -252,6 +309,14 @@ class _Backend {
   }
 
   bool online = true;
+
+  /// Nombre de requêtes reçues (permet de vérifier qu'un clic hors ligne
+  /// ne rappelle pas le réseau).
+  int requests = 0;
+
+  /// Délai artificiel de réponse (simule un réseau lent).
+  Duration delay = Duration.zero;
+
   final List<Map<String, dynamic>> tasks = [];
 
   static const List<Map<String, dynamic>> categories = [
@@ -260,6 +325,8 @@ class _Backend {
   ];
 
   http.Client get client => MockClient((request) async {
+    requests++;
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     if (!online) throw http.ClientException('hors ligne');
     final table = request.url.path.split('/').last;
 

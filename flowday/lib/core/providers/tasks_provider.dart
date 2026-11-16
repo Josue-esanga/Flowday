@@ -35,6 +35,10 @@ class TasksProvider extends ChangeNotifier {
   // Jour sélectionné (timeline + calendrier).
   DateTime selectedDate = DateTime.now();
 
+  /// Numéro de la dernière demande de jour : les réponses arrivées dans le
+  /// désordre (appuis rapides sur plusieurs dates) sont ignorées.
+  int _dayRequest = 0;
+
   // États de chargement / erreur
   bool loading = false;
   String? error;
@@ -107,7 +111,7 @@ class TasksProvider extends ChangeNotifier {
   /// modifications en attente, puis recharge les données.
   Future<void> retrySync() async {
     try {
-      await repository.syncPending();
+      await repository.retryNow();
     } catch (_) {
       // Toujours hors ligne : le bandeau reste affiché.
     }
@@ -177,23 +181,32 @@ class TasksProvider extends ChangeNotifier {
   // F1 / F2 — changer de jour (timeline et calendrier partagent la date)
   // ---------------------------------------------------------------------
   Future<void> selectDate(DateTime date) async {
+    final request = ++_dayRequest;
     selectedDate = date;
     dayLoading = true;
     dayError = null;
     notifyListeners();
     try {
-      dayTasks = await repository.fetchTasks(date: FlowDates.apiDate(date));
+      final tasks = await repository.fetchTasks(
+        date: FlowDates.apiDate(date),
+      );
+      if (request != _dayRequest) return;
+      dayTasks = tasks;
     } on ApiException catch (e) {
+      if (request != _dayRequest) return;
       dayError = e.message;
       dayTasks = [];
     } catch (_) {
+      if (request != _dayRequest) return;
       dayError = AppLocalizations.instance.t(
         'Impossible de contacter le serveur.',
       );
       dayTasks = [];
     } finally {
-      dayLoading = false;
-      notifyListeners();
+      if (request == _dayRequest) {
+        dayLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -281,34 +294,56 @@ class TasksProvider extends ChangeNotifier {
   // F6 — terminer / déterminer (mise à jour optimiste)
   // ---------------------------------------------------------------------
   Future<bool> toggle(TaskItem task) async {
-    if (!_pendingTaskToggles.add(task.id)) return true;
-    final previous = task.completed;
-    final requested = !previous;
-    _applyCompleted(task.id, requested);
+    // Mise à jour optimiste **immédiate** : même si un envoi est déjà en
+    // cours pour cette tâche, l'appui suivant s'applique tout de suite (il
+    // sera envoyé à la suite). Aucun clic n'est ignoré.
+    final current = _completedOf(task.id) ?? task.completed;
+    _applyCompleted(task.id, !current);
+    _adjustStats(completedDelta: current ? -1 : 1);
     notifyListeners();
+
+    if (!_pendingTaskToggles.add(task.id)) return true;
+    var sent = !current;
     try {
-      final updated = await repository.setTaskCompleted(task.id, requested);
-      _removeById(updated.id);
-      _insert(updated);
-      _adjustStats(
-        completedDelta: updated.completed == previous
-            ? 0
-            : updated.completed
-            ? 1
-            : -1,
-      );
-      notifyListeners();
-      unawaited(syncReminders());
-      return true;
-    } catch (_) {
-      // Annulation de l'optimisme en cas d'échec (les stats n'ont été
-      // ajustées qu'après succès de l'API).
-      _applyCompleted(task.id, previous);
-      notifyListeners();
-      return false;
+      while (true) {
+        TaskItem updated;
+        try {
+          updated = await repository.setTaskCompleted(task.id, sent);
+        } catch (_) {
+          // Échec : on revient à l'état précédent (si l'utilisateur n'a pas
+          // encore changé d'avis entre-temps).
+          if (_completedOf(task.id) == sent) {
+            _applyCompleted(task.id, !sent);
+            _adjustStats(completedDelta: sent ? -1 : 1);
+          }
+          return false;
+        }
+        final desired = _completedOf(task.id);
+        if (desired == null || desired == sent) {
+          // Aucun appui entre-temps : on aligne la liste sur le serveur.
+          _removeById(updated.id);
+          _insert(updated);
+          notifyListeners();
+          return true;
+        }
+        // Un appui a eu lieu pendant l'envoi : l'état optimiste est déjà
+        // affiché, on envoie simplement la nouvelle valeur à la suite.
+        sent = desired;
+      }
     } finally {
       _pendingTaskToggles.remove(task.id);
+      unawaited(syncReminders());
     }
+  }
+
+  /// État « terminée » actuel d'une tâche dans les listes affichées.
+  bool? _completedOf(String id) {
+    for (final list in [todayTasks, yesterdayTasks, dayTasks]) {
+      for (final task in list) {
+        if (task.id == id) return task.completed;
+      }
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------
@@ -337,6 +372,7 @@ class TasksProvider extends ChangeNotifier {
     _pendingTaskToggles.clear();
     _calendarTaskCounts.clear();
     _calendarLoadingMonths.clear();
+    _dayRequest++; // invalide les chargements de jour en cours
     selectedDate = DateTime.now();
     loading = false;
     error = null;

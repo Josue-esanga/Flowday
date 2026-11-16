@@ -933,20 +933,18 @@ Vérifications : `flutter analyze` **0 problème**, `flutter test`
   l'application (`mipmap-*`) et les anciens assets de lancement avaient été
   générés depuis ce même logo.
 
-### 3. Écran de lancement natif supprimé
+### 3. Écran de lancement natif conservé (splash visible)
 
-- Suppression de `drawable-*/launch_logo.png`,
-  `drawable/launch_background.xml` et `drawable-v21/launch_background.xml` :
-  plus aucun écran blanc avec logo n'est dessiné avant le splash.
-- `LaunchTheme` (clair, sombre et Android 12+) :
-  `android:windowDisablePreview=true` → le téléphone reste sur l'écran
-  précédent jusqu'à la première image Flutter, qui est **directement le
-  splash** ; `windowBackground` = blanc, identique au fond du splash.
-- **Android 12+** impose un splash système : il reprend l'icône de
-  l'application sur fond blanc, puis le splash Flutter prend le relais — les
-  deux se confondent, aucun écran intermédiaire.
-- **iOS** : `LaunchScreen.storyboard` conserve le logo (écran imposé par la
-  plateforme), identique au splash Flutter.
+- L'écran de lancement natif **garde le logo** : `drawable-*/launch_logo.png`
+  et `drawable/launch_background.xml` sont conservés, Android 12+ reprend
+  l'icône de l'app sur fond blanc, iOS garde son `LaunchScreen`. Le premier
+  écran affiché est donc déjà le splash (aucun écran blanc vide).
+- Le splash Flutter (`_Splash`) reste affiché **au moins 800 ms**
+  (`_RootGate.minSplash`) : auparavant, une session déjà restaurée le
+  faisait disparaître en quelques millisecondes — impression qu'il avait
+  été supprimé.
+- Le logo du splash est **l'image exacte de l'icône** (`assets/images/app_icon.png`),
+  préchargée avant `runApp` : le splash est complet dès la première image.
 
 ### 4. Photo de profil sur Supabase Storage
 
@@ -970,9 +968,35 @@ Vérifications : `flutter analyze` **0 problème**, `flutter test`
 - **Langue** : français par défaut ; libellés anglais conservés dans le
   formulaire de tâche (« Title * », « Description », « Date », « Time »).
 
+### 6. Fluidité des interactions (plus de clic « qui bug »)
+
+- **Hors ligne instantané** : après la première panne réseau constatée,
+  les actions (cocher une tâche, créer / modifier / supprimer, changer de
+  jour) répondent **immédiatement** depuis le cache et la file locale,
+  sans rappeler le réseau ni attendre le délai d'expiration (10 s). Le
+  réseau est retenté automatiquement après une fenêtre de 15 s
+  (`TaskRepository._offlineWindow`), et le bouton **« Réessayer »** force
+  une vraie tentative (`retryNow`) puis recharge les données.
+- **Double appui sur une tâche** : le second appui n'est plus ignoré —
+  l'état voulu est affiché tout de suite puis envoyé à la suite de la
+  requête en cours (boucle `TasksProvider.toggle`), avec retour arrière
+  en cas d'échec.
+- **Changement de jour** : les réponses arrivées dans le désordre (appuis
+  rapides sur plusieurs dates) sont ignorées (jeton `_dayRequest`) ; la
+  liste précédente reste affichée, simplement atténuée, au lieu de
+  clignoter en squelette.
+- **Double appui sur + / une catégorie** : un seul écran est empilé
+  (`HomeShell._push` ignore les appuis pendant la transition).
+- **Suppression** : un seul dialogue possible et bouton désactivé pendant
+  l'action (même garde `_saving` que l'enregistrement).
+- **Bandeau hors ligne** : « Réessayer » est remplacé par un indicateur
+  pendant la tentative (un seul essai à la fois).
+
 Vérifications : `flutter analyze` **0 problème**, `flutter test`
-**44 tests OK + 2 skip (live)**, `flutter build apk --debug` **OK** (asset
-`assets/images/app_icon.png` présent dans l'APK).
+**46 tests OK + 2 skip (live)** (dont 2 nouveaux tests hors ligne : aucun
+appel réseau pendant les clics, double appui non ignoré),
+`flutter build apk --debug` **OK** (asset `assets/images/app_icon.png`
+présent dans l'APK).
 
 ---
 

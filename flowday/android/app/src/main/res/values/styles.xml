@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Flowday : **aucun écran de lancement natif**.
-         L'aperçu de démarrage d'Android est désactivé : le téléphone reste
-         sur l'écran précédent jusqu'à la première image Flutter, qui est
-         directement le splash de l'application (`_Splash`). -->
+    <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is off -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowDisablePreview">true</item>
-        <item name="android:windowBackground">@android:color/white</item>
+        <!-- Show a splash screen on the activity. Automatically removed when
+             the Flutter engine draws its first frame -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
     </style>
     <!-- Theme applied to the Android Window as soon as the process has started.
          This theme determines the color of the Android Window while your

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -107,7 +109,15 @@ class _FlowdayAppState extends State<FlowdayApp> {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: const _RootGate(),
+          home: _RootGate(
+            // En production, le splash reste visible un court instant même
+            // quand la session est déjà restaurée (sinon il disparaît en
+            // quelques millisecondes). En test (session injectée), aucune
+            // attente artificielle.
+            minSplash: widget.auth == null
+                ? const Duration(milliseconds: 800)
+                : Duration.zero,
+          ),
         ),
       ),
     );
@@ -116,13 +126,45 @@ class _FlowdayAppState extends State<FlowdayApp> {
 
 /// Porte d'entrée : onboarding au premier lancement, puis écran de
 /// connexion ou coque principale selon la session.
-class _RootGate extends StatelessWidget {
-  const _RootGate();
+///
+/// Le splash reste affiché **au moins** [minSplash] : une session déjà
+/// restaurée le faisait sinon disparaître en quelques millisecondes, ce
+/// qui donnait l'impression qu'il avait été supprimé.
+class _RootGate extends StatefulWidget {
+  const _RootGate({required this.minSplash});
+
+  final Duration minSplash;
+
+  @override
+  State<_RootGate> createState() => _RootGateState();
+}
+
+class _RootGateState extends State<_RootGate> {
+  bool _splashElapsed = false;
+  Timer? _splashTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.minSplash <= Duration.zero) {
+      _splashElapsed = true;
+      return;
+    }
+    _splashTimer = Timer(widget.minSplash, () {
+      if (mounted) setState(() => _splashElapsed = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _splashTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final onboarding = context.watch<OnboardingProvider>();
-    if (onboarding.isLoading) return const _Splash();
+    if (!_splashElapsed || onboarding.isLoading) return const _Splash();
     if (onboarding.needsOnboarding) return const OnboardingScreen();
     return const _AuthGate();
   }
