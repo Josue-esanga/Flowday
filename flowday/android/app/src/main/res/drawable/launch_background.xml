@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Splash Flowday : fond blanc + logo centré (même rendu que le splash
-     Flutter qui suit). Le bitmap est fourni par densité
-     (drawable-mdpi … drawable-xxxhdpi) pour rester à 140 dp partout. -->
+<!-- Aucun écran natif avant Flutter : fond blanc, sans logo. Le premier
+     contenu visible est donc le splash Flutter (logo Flowday + nom +
+     indicateur), affiché au moins 800 ms. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/white" />
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/launch_logo" />
-    </item>
 </layer-list>

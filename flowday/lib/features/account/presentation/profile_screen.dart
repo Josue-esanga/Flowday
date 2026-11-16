@@ -213,6 +213,7 @@ class _ProfileTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final headerHeight = topPadding + 220;
+    final onHeader = AppColors.onContrast(context);
     return SizedBox(
       height: topPadding + 337,
       child: Stack(
@@ -226,8 +227,8 @@ class _ProfileTopArea extends StatelessWidget {
             child: ClipPath(
               clipper: _ProfileHeaderClipper(),
               child: ColoredBox(
-                color: AppColors.dark,
-                child: const CustomPaint(painter: WavePainter()),
+                color: AppColors.contrast(context),
+                child: CustomPaint(painter: WavePainter(color: onHeader)),
               ),
             ),
           ),
@@ -236,10 +237,10 @@ class _ProfileTopArea extends StatelessWidget {
             left: 24,
             child: Text(
               context.tr('Profil'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'DancingScript',
-                fontVariations: [FontVariation('wght', 700)],
-                color: Colors.white,
+                fontVariations: const [FontVariation('wght', 700)],
+                color: onHeader,
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
               ),
@@ -255,18 +256,18 @@ class _ProfileTopArea extends StatelessWidget {
                 children: [
                   _ProfileAvatar(radius: 60),
                   Material(
-                    color: Colors.white,
+                    color: AppColors.onContrast(context),
                     shape: const CircleBorder(),
                     elevation: 4,
                     child: InkWell(
                       onTap: onEdit,
                       customBorder: const CircleBorder(),
-                      child: const SizedBox(
+                      child: SizedBox(
                         width: 42,
                         height: 42,
                         child: Icon(
                           Icons.edit,
-                          color: AppColors.dark,
+                          color: AppColors.contrast(context),
                           size: 19,
                         ),
                       ),
@@ -484,8 +485,13 @@ class _ProfileVerticalDivider extends StatelessWidget {
   const _ProfileVerticalDivider();
 
   @override
-  Widget build(BuildContext context) =>
-      Container(width: 1, height: 66, color: const Color(0xFFE7E8ED));
+  Widget build(BuildContext context) => Container(
+    width: 1,
+    height: 66,
+    color: Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).dividerColor
+        : const Color(0xFFE7E8ED),
+  );
 }
 
 class _PersonalInformationCard extends StatelessWidget {
@@ -530,7 +536,7 @@ class _PersonalInformationCard extends StatelessWidget {
                 icon: const Icon(Icons.edit_outlined, size: 15),
                 label: Text(context.tr('Modifier')),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.dark,
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   textStyle: const TextStyle(
                     fontSize: 11,
@@ -666,10 +672,16 @@ class _ProfileActionTile extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F1F5),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF2A2E36)
+                    : const Color(0xFFF0F1F5),
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: Icon(icon, color: AppColors.dark, size: 20),
+              child: Icon(
+                icon,
+                color: Theme.of(context).colorScheme.onSurface,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -722,11 +734,15 @@ class _LogoutButton extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(22, 4, 22, 0),
       child: ElevatedButton.icon(
         onPressed: onTap,
-        icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 19),
+        icon: Icon(
+          Icons.logout_rounded,
+          color: AppColors.onContrast(context),
+          size: 19,
+        ),
         label: Text(context.tr('Se déconnecter')),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.dark,
-          foregroundColor: Colors.white,
+          backgroundColor: AppColors.contrast(context),
+          foregroundColor: AppColors.onContrast(context),
           elevation: 0,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
 /// Vagues décoratives de l'en-tête sombre (design de référence).
+///
+/// La couleur est paramétrable : blanches sur une surface anthracite
+/// (mode clair), anthracite sur une surface blanche (mode sombre).
 class WavePainter extends CustomPainter {
-  const WavePainter();
+  const WavePainter({this.color = Colors.white});
+
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.055)
+      ..color = color.withValues(alpha: 0.055)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
@@ -40,5 +45,6 @@ class WavePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant WavePainter oldDelegate) =>
+      oldDelegate.color != color;
 }

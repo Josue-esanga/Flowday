@@ -84,10 +84,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     ];
 
-    final actionBackground = isDark
-        ? theme.colorScheme.primary
-        : AppColors.dark;
-    final actionForeground = isDark ? Colors.black : Colors.white;
+    // Bouton d'action : anthracite en clair, blanc en sombre.
+    final actionBackground = AppColors.contrast(context);
+    final actionForeground = AppColors.onContrast(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

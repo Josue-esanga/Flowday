@@ -37,16 +37,14 @@ class TimelineTask extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final compact = MediaQuery.sizeOf(context).width < 360;
-    final featuredColor = Theme.of(context).brightness == Brightness.dark
-        ? colors.surface
-        : AppColors.dark;
+    final featuredColor = AppColors.contrast(context);
     final lineColor = Theme.of(context).brightness == Brightness.dark
         ? colors.outlineVariant
         : AppColors.dark;
-    // Toutes les tâches partagent le même cadre sombre (cohérence visuelle) ;
-    // la première est simplement mise en avant (typo plus grande).
-    const titleColor = Colors.white;
-    const secondaryColor = Colors.white70;
+    // Toutes les tâches partagent le même cadre contrasté (anthracite en
+    // clair, blanc en sombre) ; la première est simplement mise en avant.
+    final titleColor = AppColors.onContrast(context);
+    final secondaryColor = AppColors.onContrastMuted(context);
 
     return IntrinsicHeight(
       child: Row(
@@ -180,18 +178,18 @@ class TimelineTask extends StatelessWidget {
                             height: 43,
                             decoration: BoxDecoration(
                               color: completed
-                                  ? Colors.white
+                                  ? AppColors.onContrast(context)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: Colors.white,
+                                color: AppColors.onContrast(context),
                                 width: 2,
                               ),
                             ),
                             child: completed
-                                ? const Icon(
+                                ? Icon(
                                     Icons.check,
-                                    color: AppColors.dark,
+                                    color: AppColors.contrast(context),
                                     size: 25,
                                   )
                                 : null,
@@ -203,7 +201,9 @@ class TimelineTask extends StatelessWidget {
                               ? context.tr('Terminée')
                               : context.tr('À faire'),
                           style: TextStyle(
-                            color: completed ? Colors.white : Colors.white70,
+                            color: completed
+                                ? AppColors.onContrast(context)
+                                : AppColors.onContrastMuted(context),
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),

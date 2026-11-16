@@ -204,8 +204,8 @@ class _TimelineBody extends StatelessWidget {
               FilledButton(
                 onPressed: state.reloadDay,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.dark,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.contrast(context),
+                  foregroundColor: AppColors.onContrast(context),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -281,9 +281,9 @@ class _TimelineBody extends StatelessWidget {
               SheetActionSurface(
                 margin: const EdgeInsets.only(bottom: 10),
                 child: ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.edit_outlined,
-                    color: AppColors.dark,
+                    color: Theme.of(sheetContext).colorScheme.onSurface,
                   ),
                   title: Text(l10n.t('Modifier la tâche')),
                   onTap: () {
@@ -386,7 +386,6 @@ class _DatePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final darkMode = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -395,9 +394,7 @@ class _DatePill extends StatelessWidget {
         width: double.infinity,
         height: selected ? (compact ? 82 : 90) : (compact ? 58 : 64),
         decoration: BoxDecoration(
-          color: selected
-              ? (darkMode ? colors.primary : AppColors.dark)
-              : Colors.transparent,
+          color: selected ? AppColors.contrast(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(28),
         ),
         child: Column(
@@ -407,7 +404,7 @@ class _DatePill extends StatelessWidget {
               dayNumber,
               style: TextStyle(
                 color: selected
-                    ? (darkMode ? colors.surface : Colors.white)
+                    ? AppColors.onContrast(context)
                     : colors.onSurface.withValues(alpha: 0.58),
                 fontSize: compact ? 13 : 15,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
@@ -418,7 +415,7 @@ class _DatePill extends StatelessWidget {
               dayLabel,
               style: TextStyle(
                 color: selected
-                    ? (darkMode ? colors.surface : Colors.white)
+                    ? AppColors.onContrast(context)
                     : colors.onSurface.withValues(alpha: 0.58),
                 fontSize: compact ? 12 : 14,
               ),
@@ -427,7 +424,7 @@ class _DatePill extends StatelessWidget {
               SizedBox(height: compact ? 5 : 7),
               CircleAvatar(
                 radius: 2.5,
-                backgroundColor: darkMode ? colors.surface : Colors.white,
+                backgroundColor: AppColors.onContrast(context),
               ),
             ],
           ],

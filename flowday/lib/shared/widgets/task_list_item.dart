@@ -74,7 +74,11 @@ class TaskListItem extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: completed
-                        ? const Icon(Icons.check, color: Colors.white, size: 21)
+                        ? Icon(
+                            Icons.check,
+                            color: theme.colorScheme.onPrimary,
+                            size: 21,
+                          )
                         : null,
                   ),
                 ),

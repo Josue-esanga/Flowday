@@ -125,7 +125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return RefreshIndicator(
           onRefresh: state.loadInitial,
-          color: AppColors.dark,
+          color: AppColors.contrast(context),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
@@ -185,12 +185,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: AppColors.dark,
+                            color: AppColors.contrast(context),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
                             searching ? Icons.close : Icons.tune,
-                            color: Colors.white,
+                            color: AppColors.onContrast(context),
                             size: 22,
                           ),
                         ),
@@ -364,20 +364,23 @@ class _DashboardHeader extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final firstName = _firstName(auth);
     final l10n = context.l10n;
+    final onHeader = AppColors.onContrast(context);
 
     return Container(
       height: 225 + topPadding,
       padding: EdgeInsets.fromLTRB(22, topPadding + 35, 22, 25),
-      decoration: const BoxDecoration(
-        color: AppColors.dark,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: AppColors.contrast(context),
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
         ),
       ),
       child: Stack(
         children: [
-          const Positioned.fill(child: CustomPaint(painter: WavePainter())),
+          Positioned.fill(
+            child: CustomPaint(painter: WavePainter(color: onHeader)),
+          ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -386,11 +389,11 @@ class _DashboardHeader extends StatelessWidget {
                   Expanded(
                     child: Text(
                       l10n.greeting(firstName),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'DancingScript',
-                        fontVariations: [FontVariation('wght', 700)],
+                        fontVariations: const [FontVariation('wght', 700)],
                         fontWeight: FontWeight.w700,
-                        color: Colors.white70,
+                        color: onHeader.withValues(alpha: 0.7),
                         fontSize: 21,
                       ),
                     ),
@@ -409,8 +412,8 @@ class _DashboardHeader extends StatelessWidget {
               const SizedBox(height: 15),
               Text(
                 l10n.t('Trouvons\nvotre meilleure journée !'),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: onHeader,
                   fontSize: 25,
                   height: 1.2,
                   fontWeight: FontWeight.bold,
@@ -476,10 +479,23 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = (screenWidth - 48).clamp(220.0, 320.0).toDouble();
     final compact = cardWidth < 260;
-    final Color foreground = dark ? Colors.white : theme.colorScheme.onSurface;
+    // Cartes « contrastées » : anthracite en clair, blanches en sombre.
+    final Color foreground = dark
+        ? (isDark ? AppColors.text : Colors.white)
+        : theme.colorScheme.onSurface;
+    final Color muted = dark
+        ? (isDark ? AppColors.text.withValues(alpha: 0.62) : Colors.white70)
+        : theme.colorScheme.onSurface.withValues(alpha: 0.65);
+    final Color accentBg = dark
+        ? (isDark ? AppColors.text : Colors.white)
+        : AppColors.dark;
+    final Color accentFg = dark
+        ? (isDark ? Colors.white : AppColors.dark)
+        : Colors.white;
 
     return GestureDetector(
       onTap: onTap,
@@ -488,7 +504,9 @@ class _CategoryCard extends StatelessWidget {
         width: cardWidth,
         padding: EdgeInsets.all(compact ? 17 : 22),
         decoration: BoxDecoration(
-          color: dark ? AppColors.dark : theme.cardColor,
+          color: dark
+              ? (isDark ? Colors.white : AppColors.dark)
+              : theme.cardColor,
           borderRadius: BorderRadius.circular(38),
         ),
         child: Column(
@@ -497,11 +515,11 @@ class _CategoryCard extends StatelessWidget {
             Container(
               width: compact ? 50 : 58,
               height: compact ? 50 : 58,
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: accentBg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: AppColors.dark, size: compact ? 27 : 31),
+              child: Icon(icon, color: accentFg, size: compact ? 27 : 31),
             ),
             SizedBox(height: compact ? 14 : 20),
             Text(
@@ -520,28 +538,25 @@ class _CategoryCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: dark
-                    ? Colors.white70
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                color: muted,
                 fontSize: compact ? 14 : 16,
                 height: 1.4,
               ),
             ),
             const Spacer(),
-            // Flèche sur TOUTES les cartes (fond blanc sur carte sombre,
-            // fond sombre sur carte claire).
+            // Flèche sur TOUTES les cartes (pastille contrastée).
             Align(
               alignment: Alignment.bottomRight,
               child: Container(
                 width: 45,
                 height: 45,
                 decoration: BoxDecoration(
-                  color: dark ? Colors.white : AppColors.dark,
+                  color: accentBg,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.arrow_forward,
-                  color: dark ? AppColors.dark : Colors.white,
+                  color: accentFg,
                   size: 25,
                 ),
               ),

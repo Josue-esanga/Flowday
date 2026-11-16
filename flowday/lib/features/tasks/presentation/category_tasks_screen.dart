@@ -94,9 +94,9 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
           // ------------------------------------------------------------
           Container(
             padding: EdgeInsets.fromLTRB(6, topPadding + 12, 22, 20),
-            decoration: const BoxDecoration(
-              color: AppColors.dark,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: AppColors.contrast(context),
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(32),
                 bottomRight: Radius.circular(32),
               ),
@@ -105,9 +105,9 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
               children: [
                 IconButton(
                   onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios_new,
-                    color: Colors.white,
+                    color: AppColors.onContrast(context),
                     size: 20,
                   ),
                 ),
@@ -118,8 +118,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                     children: [
                       Text(
                         categoryDisplayName(context, category),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppColors.onContrast(context),
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -128,7 +128,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                       Text(
                         _loading ? l10n.t('Chargement…') : _countLabel,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: AppColors.onContrastMuted(context),
                           fontSize: 13,
                         ),
                       ),
@@ -138,8 +138,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                 Container(
                   width: 46,
                   height: 46,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: AppColors.onContrast(context),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

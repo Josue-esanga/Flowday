@@ -34,8 +34,8 @@ class ErrorState extends StatelessWidget {
             FilledButton(
               onPressed: onRetry,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.dark,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.contrast(context),
+                foregroundColor: AppColors.onContrast(context),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),

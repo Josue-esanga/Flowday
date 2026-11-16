@@ -54,6 +54,19 @@ class AppColors {
   static const Color health = Color(0xFFF5C542); // jaune
   static const Color personal = Color(0xFFF05B52); // rouge
   static const Color education = Color(0xFF4E8CFF); // bleu
+
+  /// Surface « contrastée » (en-têtes, cartes mises en avant, boutons) :
+  /// anthracite en mode clair, **blanche** en mode sombre.
+  static Color contrast(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? Colors.white : dark;
+
+  /// Contenu posé sur [contrast] : blanc en clair, anthracite en sombre.
+  static Color onContrast(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? text : Colors.white;
+
+  /// Variante atténuée de [onContrast] (textes secondaires).
+  static Color onContrastMuted(BuildContext context) =>
+      onContrast(context).withValues(alpha: 0.7);
 }
 
 /// Thème clair de l'application.
@@ -103,12 +116,17 @@ class AppTheme {
       canvasColor: background,
       cardColor: surface,
       dividerColor: const Color(0xFF343842),
+      // En mode sombre, « ce qui était noir devient blanc » : la couleur
+      // d'accent (cases cochées, pastilles, boutons) passe au blanc pur.
       colorScheme: base.colorScheme.copyWith(
-        primary: const Color(0xFFB9C0CF),
-        secondary: const Color(0xFFB9C0CF),
+        primary: Colors.white,
+        secondary: Colors.white,
+        onPrimary: AppColors.text,
         surface: surface,
         onSurface: foreground,
+        surfaceTint: Colors.transparent,
       ),
+      dialogTheme: const DialogThemeData(backgroundColor: surface),
       textTheme: base.textTheme.apply(
         bodyColor: foreground,
         displayColor: foreground,

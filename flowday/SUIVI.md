@@ -1020,6 +1020,44 @@ présent dans l'APK).
 
 ---
 
+## 🌙 Itération 9 — splash unique au lancement & mode sombre inversé
+
+### 1. Le splash est le tout premier écran
+
+- **Plus d'écran natif avant Flutter** : `drawable/launch_background.xml`
+  ne contient plus que le fond blanc (aucun logo). Le premier contenu
+  visible est donc le **splash Flutter** (icône de l'app, « Flowday »,
+  indicateur de chargement), affiché au minimum 800 ms.
+- `android:windowDisablePreview=true` sur `LaunchTheme` (clair + sombre) :
+  Android n'affiche aucune fenêtre de prévisualisation pendant le
+  démarrage, c'est la première image Flutter qui apparaît.
+- Android 12+ : le splash système reste **invisible** (icône transparente,
+  fond blanc), donc pas de logo intermédiaire non plus.
+
+### 2. Mode sombre : « le noir devient blanc »
+
+- Nouveaux utilitaires `AppColors.contrast(context)` /
+  `AppColors.onContrast(context)` / `AppColors.onContrastMuted(context)` :
+  une surface « contrastée » est **anthracite en clair et blanche en
+  sombre**, son contenu l'inverse (blanc → anthracite).
+- Appliqués aux en-têtes (accueil, profil, catégorie), à la carte de
+  catégorie mise en avant, aux cartes de la timeline, aux cases à cocher,
+  aux boutons principaux (« Enregistrer », « Réessayer », « Se
+  déconnecter »), au bouton filtre, aux pastilles de date, aux onglets de
+  catégorie du formulaire et au bouton de l'onboarding.
+- `WavePainter` accepte une couleur : vagues blanches sur fond anthracite,
+  anthracite sur fond blanc.
+- Thème sombre : `primary` / `secondary` passés au **blanc pur**
+  (`onPrimary` anthracite) — cases cochées, pastilles du calendrier, titres
+  de section et boutons « Voir les tâches du jour » suivent.
+- Dialogues : fond `cardColor` en sombre (plus de dialogue blanc avec du
+  texte clair), séparateurs et champs déjà thémés.
+
+Vérifications : `flutter analyze` **0 problème**, `flutter test`
+**46 tests OK + 2 skip (live)**, `flutter build apk --debug` **OK**.
+
+---
+
 ## 📝 Notes / décisions de design
 
 - **Refonte du design** : le design initial (sombre + orange) a été remplacé

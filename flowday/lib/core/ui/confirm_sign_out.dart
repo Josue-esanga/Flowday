@@ -16,7 +16,7 @@ Future<bool> confirmSignOut(BuildContext context) async {
     builder: (dialogContext) {
       final l10n = AppLocalizations.of(dialogContext);
       return AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(dialogContext).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titlePadding: const EdgeInsets.fromLTRB(24, 22, 4, 0),
         contentPadding: const EdgeInsets.fromLTRB(24, 14, 24, 24),

@@ -216,10 +216,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               children: [
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios_new,
                     size: 20,
-                    color: AppColors.dark,
+                    color: colors.onSurface,
                   ),
                 ),
                 Expanded(
@@ -379,8 +379,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: _category?.id == category.id
-                                  ? AppColors.dark
-                                  : AppColors.lightCard,
+                                  ? AppColors.contrast(context)
+                                  : (theme.brightness == Brightness.dark
+                                        ? theme.colorScheme.surfaceContainerHigh
+                                        : AppColors.lightCard),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -399,7 +401,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                                   categoryDisplayName(context, category),
                                   style: TextStyle(
                                     color: _category?.id == category.id
-                                        ? Colors.white
+                                        ? AppColors.onContrast(context)
                                         : AppColors.muted,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -432,20 +434,20 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   child: FilledButton(
                     onPressed: _saving ? null : _save,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.dark,
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.contrast(context),
+                      foregroundColor: AppColors.onContrast(context),
                       disabledBackgroundColor: AppColors.muted,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     child: _saving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.onContrast(context),
                             ),
                           )
                         : Text(
