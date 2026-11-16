@@ -992,6 +992,26 @@ Vérifications : `flutter analyze` **0 problème**, `flutter test`
 - **Bandeau hors ligne** : « Réessayer » est remplacé par un indicateur
   pendant la tentative (un seul essai à la fois).
 
+### 7. Ajustements visuels — lancement, timeline, skeletons
+
+- **Plus de page avant l'écran natif** : sur Android 12+, le splash
+  système est rendu **invisible** (`windowSplashScreenAnimatedIcon` =
+  `@drawable/splash_transparent`, fond blanc). Le premier contenu affiché
+  est donc l'écran de lancement natif Flowday (logo), puis le splash
+  Flutter — aucun écran intermédiaire.
+- **Timeline (« Tout voir »)** : toutes les tâches partagent désormais le
+  **même cadre sombre arrondi** que la première (cohérence visuelle) ;
+  seule la première garde une typo légèrement plus grande.
+- **Case à cocher de la timeline** : elle reflète l'état réel de la tâche
+  (cochée uniquement si elle est terminée, sinon case vide cerclée de
+  blanc) — le libellé « Terminée / À faire » reste affiché sur chaque
+  carte.
+- **Skeletons façon TikTok** : balayage lumineux **continu** (bande claire
+  qui traverse le bloc de gauche à droite), thème clair et sombre, et
+  compositions fidèles aux cartes réelles (`SkeletonTaskTile` pour
+  l'accueil / les catégories, `SkeletonTimelineCard` /
+  `SkeletonTimelineList` pour la timeline).
+
 Vérifications : `flutter analyze` **0 problème**, `flutter test`
 **46 tests OK + 2 skip (live)** (dont 2 nouveaux tests hors ligne : aucun
 appel réseau pendant les clics, double appui non ignoré),

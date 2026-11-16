@@ -85,19 +85,30 @@ void main() {
     await tester.tap(find.text('Tout voir').first);
     await tester.pumpAndSettle();
 
-    // Première tâche (mise en avant) : initialement terminée.
-    expect(find.text('Terminée'), findsOneWidget);
+    // Toutes les cartes de la timeline affichent leur état ; on vérifie
+    // celui de la première tâche (mise en avant), initialement terminée.
+    final firstTile = find.byType(TimelineTask).first;
+    expect(
+      find.descendant(of: firstTile, matching: find.text('Terminée')),
+      findsOneWidget,
+    );
 
     final featuredCheck = find.descendant(
-      of: find.byType(TimelineTask).first,
+      of: firstTile,
       matching: find.byIcon(Icons.check),
     );
     await tester.tap(featuredCheck);
     await tester.pumpAndSettle();
 
     expect(repo.toggledIds, contains('t1'));
-    expect(find.text('À faire'), findsOneWidget);
-    expect(find.text('Terminée'), findsNothing);
+    expect(
+      find.descendant(of: firstTile, matching: find.text('À faire')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: firstTile, matching: find.text('Terminée')),
+      findsNothing,
+    );
   });
 
   testWidgets('F4 — modification depuis la timeline', (tester) async {

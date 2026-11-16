@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ impose un splash système. Il est rendu **invisible**
+     (icône transparente sur fond blanc) pour que le premier contenu
+     affiché soit l'écran de lancement natif Flowday (logo), puis le
+     splash Flutter. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+</shape>

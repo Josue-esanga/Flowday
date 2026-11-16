@@ -43,10 +43,10 @@ class TimelineTask extends StatelessWidget {
     final lineColor = Theme.of(context).brightness == Brightness.dark
         ? colors.outlineVariant
         : AppColors.dark;
-    final titleColor = featured ? Colors.white : colors.onSurface;
-    final secondaryColor = featured
-        ? Colors.white70
-        : colors.onSurface.withValues(alpha: 0.62);
+    // Toutes les tâches partagent le même cadre sombre (cohérence visuelle) ;
+    // la première est simplement mise en avant (typo plus grande).
+    const titleColor = Colors.white;
+    const secondaryColor = Colors.white70;
 
     return IntrinsicHeight(
       child: Row(
@@ -105,11 +105,9 @@ class TimelineTask extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Container(
                 margin: const EdgeInsets.only(bottom: 15),
-                padding: featured
-                    ? EdgeInsets.all(compact ? 14 : 18)
-                    : const EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.all(compact ? 14 : 18),
                 decoration: BoxDecoration(
-                  color: featured ? featuredColor : Colors.transparent,
+                  color: featuredColor,
                   borderRadius: BorderRadius.circular(35),
                 ),
                 child: Column(
@@ -168,42 +166,50 @@ class TimelineTask extends StatelessWidget {
                       CategoryLabel(category: category!, color: secondaryColor),
                     ],
 
-                    if (featured) ...[
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          // F6 : action « terminée ».
-                          GestureDetector(
-                            onTap: onToggle,
-                            behavior: HitTestBehavior.opaque,
-                            child: Container(
-                              width: 43,
-                              height: 43,
-                              decoration: BoxDecoration(
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        // F6 : action « terminée » — la case reflète l'état
+                        // réel de la tâche (cochée uniquement si terminée).
+                        GestureDetector(
+                          onTap: onToggle,
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 43,
+                            height: 43,
+                            decoration: BoxDecoration(
+                              color: completed
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.check,
-                                color: AppColors.dark,
-                                size: 25,
+                                width: 2,
                               ),
                             ),
+                            child: completed
+                                ? const Icon(
+                                    Icons.check,
+                                    color: AppColors.dark,
+                                    size: 25,
+                                  )
+                                : null,
                           ),
-                          const Spacer(),
-                          Text(
-                            completed
-                                ? context.tr('Terminée')
-                                : context.tr('À faire'),
-                            style: TextStyle(
-                              color: completed ? Colors.white : Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          completed
+                              ? context.tr('Terminée')
+                              : context.tr('À faire'),
+                          style: TextStyle(
+                            color: completed ? Colors.white : Colors.white70,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

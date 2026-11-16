@@ -178,8 +178,8 @@ class _TimelineBody extends StatelessWidget {
     final state = context.watch<TasksProvider>();
 
     if (state.dayLoading && state.dayTasks.isEmpty) {
-      // Liste en skeleton (timeline groupée par heure).
-      return const SkeletonTaskList(itemCount: 5);
+      // Cartouches en skeleton (mêmes formes que les cartes réelles).
+      return const SkeletonTimelineList(itemCount: 4);
     }
 
     if (state.dayError != null) {
