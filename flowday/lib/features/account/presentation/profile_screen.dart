@@ -32,7 +32,7 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       color: Theme.of(context).brightness == Brightness.dark
           ? Theme.of(context).scaffoldBackgroundColor
-          : const Color(0xFFF8F8FC),
+          : AppColors.white,
       child: ListView(
         padding: const EdgeInsets.only(bottom: 18),
         children: [
@@ -213,7 +213,7 @@ class _ProfileTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final headerHeight = topPadding + 220;
-    final onHeader = AppColors.onContrast(context);
+    const onHeader = AppColors.onHeader;
     return SizedBox(
       height: topPadding + 337,
       child: Stack(
@@ -227,7 +227,7 @@ class _ProfileTopArea extends StatelessWidget {
             child: ClipPath(
               clipper: _ProfileHeaderClipper(),
               child: ColoredBox(
-                color: AppColors.contrast(context),
+                color: AppColors.header,
                 child: CustomPaint(painter: WavePainter(color: onHeader)),
               ),
             ),

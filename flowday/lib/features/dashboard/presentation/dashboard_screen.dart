@@ -364,13 +364,13 @@ class _DashboardHeader extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final firstName = _firstName(auth);
     final l10n = context.l10n;
-    final onHeader = AppColors.onContrast(context);
+    const onHeader = AppColors.onHeader;
 
     return Container(
       height: 225 + topPadding,
       padding: EdgeInsets.fromLTRB(22, topPadding + 35, 22, 25),
       decoration: BoxDecoration(
-        color: AppColors.contrast(context),
+        color: AppColors.header,
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),

@@ -64,6 +64,12 @@ class AppColors {
   static Color onContrast(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? text : Colors.white;
 
+  /// En-tête des pages : anthracite dans les deux thèmes.
+  static const Color header = dark;
+
+  /// Texte posé sur l'en-tête anthracite.
+  static const Color onHeader = Colors.white;
+
   /// Variante atténuée de [onContrast] (textes secondaires).
   static Color onContrastMuted(BuildContext context) =>
       onContrast(context).withValues(alpha: 0.7);
@@ -85,12 +91,23 @@ class AppTheme {
       // teintée) : on force un blanc net pour les cartes et les feuilles.
       cardColor: AppColors.white,
       dialogTheme: const DialogThemeData(backgroundColor: AppColors.white),
+      datePickerTheme: const DatePickerThemeData(
+        backgroundColor: AppColors.white,
+      ),
+      timePickerTheme: const TimePickerThemeData(
+        backgroundColor: AppColors.white,
+      ),
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.dark,
         secondary: AppColors.dark,
         surface: AppColors.white,
         // Évite le voile lavande appliqué aux surfaces élevées en M3.
         surfaceTint: Colors.transparent,
+        surfaceContainerLowest: AppColors.white,
+        surfaceContainerLow: AppColors.white,
+        surfaceContainer: AppColors.white,
+        surfaceContainerHigh: AppColors.white,
+        surfaceContainerHighest: AppColors.white,
         onSurface: AppColors.text,
       ),
       textTheme: base.textTheme.apply(
@@ -132,8 +149,8 @@ class AppTheme {
         displayColor: foreground,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: background,
-        foregroundColor: foreground,
+        backgroundColor: AppColors.dark,
+        foregroundColor: Colors.white,
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
