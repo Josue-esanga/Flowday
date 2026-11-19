@@ -78,7 +78,28 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(context: context, initialTime: _time);
+    final theme = Theme.of(context);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _time,
+      builder: (context, child) => Theme(
+        data: theme.copyWith(
+          timePickerTheme: theme.timePickerTheme.copyWith(
+            hourMinuteColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.dark
+                  : Theme.of(context).colorScheme.surfaceContainerHigh,
+            ),
+            hourMinuteTextColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.white
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+        child: child!,
+      ),
+    );
     if (picked != null) setState(() => _time = picked);
   }
 
